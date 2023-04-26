@@ -238,6 +238,9 @@ func (st *StateTransition) buyGas() error {
 	var dataGasUsed uint64
 	if st.evm.ChainConfig().IsCancun(st.evm.Context.Time) {
 		dataGasUsed = st.dataGasUsed()
+		if dataGasUsed == 0 {
+			return fmt.Errorf("%w: cancun is active but DataGasUsed is 0. Time: %v", ErrInternalFailure, st.evm.Context.Time)
+		}
 		if st.evm.Context.ExcessDataGas == nil {
 			return fmt.Errorf("%w: cancun is active but ExcessDataGas is nil. Time: %v", ErrInternalFailure, st.evm.Context.Time)
 		}
