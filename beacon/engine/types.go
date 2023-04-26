@@ -195,7 +195,7 @@ func ExecutableDataToBlock(params ExecutableData) (*types.Block, error) {
 	// Check that number of blobs are valid
 	for _, tx := range txs {
 		if tx.Type() == types.BlobTxType && len(tx.DataHashes()) == 0 {
-			return nil, fmt.Errorf("zero data gas in blob tx")
+			// return nil, fmt.Errorf("zero data gas in blob tx")
 		}
 	}
 	header := &types.Header{
