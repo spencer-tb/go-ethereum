@@ -857,7 +857,7 @@ func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 			// Thus, we can safely ignore it here
 			continue
 		}
-		if obj.suicided || (deleteEmptyObjects && obj.empty()) || (obj.created && obj.sendalled) {
+		if (obj.suicided && obj.created) || (deleteEmptyObjects && obj.empty()) || (obj.created && obj.sendalled) {
 			obj.deleted = true
 
 			// We need to maintain account deletions explicitly (will remain
