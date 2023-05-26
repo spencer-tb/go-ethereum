@@ -405,6 +405,11 @@ func (api *ConsensusAPI) GetPayloadV2(payloadID engine.PayloadID) (*engine.Execu
 	return api.getPayload(payloadID)
 }
 
+// GetPayloadV2 returns a cached payload by id.
+func (api *ConsensusAPI) GetPayloadV3(payloadID engine.PayloadID) (*engine.ExecutionPayloadEnvelope, error) {
+	return api.getPayload(payloadID) // TODO (MariusVanDerWijden) return blobs once miner allows it
+}
+
 func (api *ConsensusAPI) getPayload(payloadID engine.PayloadID) (*engine.ExecutionPayloadEnvelope, error) {
 	log.Trace("Engine API request received", "method", "GetPayload", "id", payloadID)
 	data := api.localBlocks.get(payloadID)
@@ -430,6 +435,18 @@ func (api *ConsensusAPI) NewPayloadV2(params engine.ExecutableData) (engine.Payl
 		}
 	} else if params.Withdrawals != nil {
 		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(errors.New("non-nil withdrawals pre-shanghai"))
+	}
+	return api.newPayload(params)
+}
+
+// NewPayloadV3 creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
+func (api *ConsensusAPI) NewPayloadV3(params engine.ExecutableData) (engine.PayloadStatusV1, error) {
+	if api.eth.BlockChain().Config().IsCancun(new(big.Int).SetUint64(params.Number), params.Timestamp) {
+		if params.ExcessDataGas == nil {
+			return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("nil excessDataGas post-cancun"))
+		}
+	} else if params.ExcessDataGas != nil {
+		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("non-nil excessDataGas pre-cancun"))
 	}
 	return api.newPayload(params)
 }
