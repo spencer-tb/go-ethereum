@@ -339,7 +339,6 @@ func (st *StateTransition) preCheck() error {
 			}
 		}
 	}
-
 	return st.buyGas()
 }
 
