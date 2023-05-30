@@ -76,9 +76,12 @@ func PointEvaluationPrecompile(input []byte) ([]byte, error) {
 
 	var x, y gokzg4844.Scalar
 	// Evaluation point: next 32 bytes
-	copy(x[:], input[32:64])
+	// copy(x[:], input[32:64])
+	copy(x[:], reverseBytes(input[32:64]))
+
 	// Expected output: next 32 bytes
-	copy(y[:], input[64:96])
+	// copy(y[:], input[64:96])
+	copy(y[:], reverseBytes(input[64:96]))
 
 	// input kzg point: next 48 bytes
 	var dataKZG [48]byte
@@ -100,6 +103,18 @@ func PointEvaluationPrecompile(input []byte) ([]byte, error) {
 	result := precompileReturnValue // copy the value
 
 	return result[:], nil
+}
+
+func reverseBytes(input []byte) []byte {
+	output := make([]byte, len(input))
+	copy(output, input)
+
+	for i := len(output)/2 - 1; i >= 0; i-- {
+		opp := len(output) - 1 - i
+		output[i], output[opp] = output[opp], output[i]
+	}
+
+	return output
 }
 
 // KZGToVersionedHash implements kzg_to_versioned_hash from EIP-4844
