@@ -68,7 +68,7 @@ type ExecutableData struct {
 	BlockHash     common.Hash         `json:"blockHash"     gencodec:"required"`
 	Transactions  [][]byte            `json:"transactions"  gencodec:"required"`
 	Withdrawals   []*types.Withdrawal `json:"withdrawals"`
-	ExcessDataGas *big.Int            `json:"excessDataGas"` // New in EIP-4844
+	ExcessDataGas *uint64             `json:"excessDataGas"` // New in EIP-4844
 }
 
 // JSON type overrides for executableData.
@@ -78,7 +78,7 @@ type executableDataMarshaling struct {
 	GasUsed       hexutil.Uint64
 	Timestamp     hexutil.Uint64
 	BaseFeePerGas *hexutil.Big
-	ExcessDataGas *hexutil.Big
+	ExcessDataGas *hexutil.Uint64
 	ExtraData     hexutil.Bytes
 	LogsBloom     hexutil.Bytes
 	Transactions  []hexutil.Bytes
@@ -215,7 +215,7 @@ func ExecutableDataToBlock(params ExecutableData) (*types.Block, error) {
 		Extra:           params.ExtraData,
 		MixDigest:       params.Random,
 		WithdrawalsHash: withdrawalsRoot,
-		ExcessDataGas:   params.ExcessDataGas,
+		ExcessDataGas:   new(big.Int).SetUint64(*params.ExcessDataGas),
 	}
 	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */).WithWithdrawals(params.Withdrawals)
 	if block.Hash() != params.BlockHash {
@@ -243,7 +243,7 @@ func BlockToExecutableData(block *types.Block, fees *big.Int) *ExecutionPayloadE
 		Random:        block.MixDigest(),
 		ExtraData:     block.Extra(),
 		Withdrawals:   block.Withdrawals(),
-		ExcessDataGas: block.ExcessDataGas(),
+		ExcessDataGas: func(b *big.Int) *uint64 { v := b.Uint64(); return &v }(block.ExcessDataGas()),
 	}
 	return &ExecutionPayloadEnvelope{ExecutionPayload: data, BlockValue: fees}
 }

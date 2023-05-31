@@ -174,7 +174,7 @@ func (h *Header) SanityCheck() error {
 		}
 	}
 	if h.ExcessDataGas != nil {
-		if bfLen := h.ExcessDataGas.BitLen(); bfLen > 256 {
+		if bfLen := h.ExcessDataGas.BitLen(); bfLen > 64 {
 			return fmt.Errorf("too large excess data gas: bitlen %d", bfLen)
 		}
 	}

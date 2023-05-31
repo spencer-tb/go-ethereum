@@ -63,7 +63,7 @@ type Genesis struct {
 	GasUsed       uint64      `json:"gasUsed"`
 	ParentHash    common.Hash `json:"parentHash"`
 	BaseFee       *big.Int    `json:"baseFeePerGas"`
-	ExcessDataGas *big.Int    `json:"excessDataGas"`
+	ExcessDataGas *uint64     `json:"excessDataGas"`
 }
 
 func ReadGenesis(db ethdb.Database) (*Genesis, error) {
@@ -225,7 +225,7 @@ type genesisSpecMarshaling struct {
 	Number        math.HexOrDecimal64
 	Difficulty    *math.HexOrDecimal256
 	BaseFee       *math.HexOrDecimal256
-	ExcessDataGas *math.HexOrDecimal256
+	ExcessDataGas *math.HexOrDecimal64
 	Alloc         map[common.UnprefixedAddress]GenesisAccount
 }
 
@@ -472,7 +472,8 @@ func (g *Genesis) ToBlock() *types.Block {
 			head.WithdrawalsHash = &types.EmptyRootHash
 		}
 		if g.Config.IsCancun(g.Timestamp) {
-			head.SetExcessDataGas(g.ExcessDataGas)
+			edg := new(big.Int).SetUint64(*g.ExcessDataGas)
+			head.SetExcessDataGas(edg)
 		}
 	}
 	var withdrawals []*types.Withdrawal

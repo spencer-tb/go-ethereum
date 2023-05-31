@@ -768,7 +768,7 @@ func setBlockhash(data *engine.ExecutableData) *engine.ExecutableData {
 		GasUsed:       data.GasUsed,
 		Time:          data.Timestamp,
 		BaseFee:       data.BaseFeePerGas,
-		ExcessDataGas: data.ExcessDataGas,
+		ExcessDataGas: new(big.Int).SetUint64(*data.ExcessDataGas),
 		Extra:         data.ExtraData,
 		MixDigest:     data.Random,
 	}

@@ -177,7 +177,7 @@ func (t *BlockTest) genesis(config *params.ChainConfig) *core.Genesis {
 		Coinbase:      t.json.Genesis.Coinbase,
 		Alloc:         t.json.Pre,
 		BaseFee:       t.json.Genesis.BaseFeePerGas,
-		ExcessDataGas: t.json.Genesis.ExcessDataGas,
+		ExcessDataGas: func(b *big.Int) *uint64 { v := b.Uint64(); return &v }(t.json.Genesis.ExcessDataGas),
 	}
 }
 

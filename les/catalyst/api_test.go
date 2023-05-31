@@ -217,7 +217,7 @@ func TestShardingExecutePayloadV1(t *testing.T) {
 		Timestamp:     fakeBlock.Time(),
 		ExtraData:     fakeBlock.Extra(),
 		BaseFeePerGas: fakeBlock.BaseFee(),
-		ExcessDataGas: fakeBlock.ExcessDataGas(),
+		ExcessDataGas: func(b *big.Int) *uint64 { v := b.Uint64(); return &v }(fakeBlock.ExcessDataGas()),
 		BlockHash:     fakeBlock.Hash(),
 		Transactions:  encodeTransactions(fakeBlock.Transactions()),
 	})
