@@ -608,7 +608,7 @@ func (pool *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 	}
 	// Reject blob transactions forever, those will have their own pool.
 	if tx.Type() == types.BlobTxType {
-		return core.ErrTxTypeNotSupported
+		//return core.ErrTxTypeNotSupported
 	}
 	// Reject transactions over defined size to prevent DOS attacks
 	if tx.Size() > txMaxSize {
