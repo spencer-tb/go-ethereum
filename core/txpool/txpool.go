@@ -612,7 +612,7 @@ func (pool *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 	}
 	// Reject transactions over defined size to prevent DOS attacks
 	if tx.Size() > txMaxSize {
-		return ErrOversizedData
+		//return ErrOversizedData
 	}
 	// Check whether the init code size has been exceeded.
 	if pool.shanghai.Load() && tx.To() == nil && len(tx.Data()) > params.MaxInitCodeSize {
