@@ -197,9 +197,14 @@ func (tx *Transaction) decodeTyped(b []byte) (TxData, error) {
 		err := rlp.DecodeBytes(b[1:], &inner)
 		return &inner, err
 	case BlobTxType:
-		var inner BlobTx
-		err := rlp.DecodeBytes(b[1:], &inner)
-		return &inner, err
+		var envelope BlobTxWithBlobs
+		err := rlp.DecodeBytes(b[1:], &envelope)
+		if err != nil {
+			var inner BlobTx
+			err := rlp.DecodeBytes(b[1:], &inner)
+			return &inner, err
+		}
+		return &envelope.Payload, err
 	default:
 		return nil, ErrTxTypeNotSupported
 	}
