@@ -208,11 +208,11 @@ func (s dankSigner) Equal(s2 Signer) bool {
 }
 
 func (s dankSigner) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big.Int, err error) {
-	txdata, ok := tx.inner.(*SignedBlobTx)
+	txdata, ok := tx.inner.(*BlobTxMessage)
 	if !ok {
 		return s.londonSigner.SignatureValues(tx, sig)
 	}
-	id := u256ToBig(&txdata.Message.ChainID)
+	id := txdata.ChainID
 	// Check that chain ID of tx matches the signer. We also accept ID zero here,
 	// because it indicates that the chain ID was not specified in the tx.
 	if id.Sign() != 0 && id.Cmp(s.chainId) != 0 {
@@ -229,9 +229,21 @@ func (s dankSigner) Hash(tx *Transaction) common.Hash {
 	if tx.Type() != BlobTxType {
 		return s.londonSigner.Hash(tx)
 	}
-	messageSigning := tx.inner.(*SignedBlobTx).Message
-	messageSigning.setChainID(s.chainId)
-	return prefixedSSZHash(BlobTxType, &messageSigning)
+	return prefixedRlpHash(
+		tx.Type(),
+		[]interface{}{
+			s.chainId,
+			tx.Nonce(),
+			tx.GasTipCap(),
+			tx.GasFeeCap(),
+			tx.Gas(),
+			tx.To(),
+			tx.Value(),
+			tx.Data(),
+			tx.AccessList(),
+			tx.MaxFeePerDataGas(),
+			tx.DataHashes(),
+		})
 }
 
 type londonSigner struct{ eip2930Signer }

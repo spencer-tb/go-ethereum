@@ -39,8 +39,6 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/holiman/uint256"
-	"github.com/protolambda/ztyp/view"
 )
 
 // testEthHandler is a mock event handler to listen for inbound network requests
@@ -453,13 +451,11 @@ func testTransactionPropagation(t *testing.T, protocol uint) {
 
 		txs[nonce] = tx
 	}
-	txdata := &types.SignedBlobTx{
-		Message: types.BlobTxMessage{
-			ChainID:             view.Uint256View(*uint256.NewInt(1)),
-			Nonce:               view.Uint64View(len(txs)),
-			Gas:                 view.Uint64View(123457),
-			BlobVersionedHashes: types.VersionedHashesView{common.HexToHash("0x01624652859a6e98ffc1608e2af0147ca4e86e1ce27672d8d3f3c9d4ffd6ef7e")},
-		},
+	txdata := &types.BlobTxMessage{
+		ChainID:             big.NewInt(1),
+		Nonce:               uint64(len(txs)),
+		Gas:                 123457,
+		BlobVersionedHashes: []common.Hash{common.HexToHash("0x01624652859a6e98ffc1608e2af0147ca4e86e1ce27672d8d3f3c9d4ffd6ef7e")},
 	}
 	wrapData := &types.BlobTxWrapData{
 		BlobKzgs: types.BlobKzgs{types.KZGCommitment{0: 0xc0}},

@@ -23,7 +23,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/protolambda/ztyp/view"
 )
 
 type devnull struct{ len int }
@@ -138,16 +137,14 @@ func benchRLP(b *testing.B, encode bool) {
 		{
 			"blob-transaction",
 			MustSignNewTx(key, signer,
-				&SignedBlobTx{
-					Message: BlobTxMessage{
-						Nonce:               1,
-						Gas:                 1000000,
-						To:                  AddressOptionalSSZ{Address: (*AddressSSZ)(&to)},
-						Value:               view.MustUint256("1"),
-						GasTipCap:           view.MustUint256("500"),
-						GasFeeCap:           view.MustUint256("500"),
-						BlobVersionedHashes: VersionedHashesView{common.Hash{0xaa}},
-					},
+				&BlobTxMessage{
+					Nonce:               1,
+					Gas:                 1000000,
+					To:                  &to,
+					Value:               big.NewInt(1),
+					GasTipCap:           big.NewInt(500),
+					GasFeeCap:           big.NewInt(500),
+					BlobVersionedHashes: []common.Hash{common.Hash{0xaa}},
 				}, WithTxWrapData(&BlobTxWrapData{
 					BlobKzgs: BlobKzgs{KZGCommitment{0xbb}},
 					Blobs:    Blobs{Blob{}},

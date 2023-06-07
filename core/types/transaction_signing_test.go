@@ -24,8 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/holiman/uint256"
-	"github.com/protolambda/ztyp/view"
 )
 
 func TestEIP155Signing(t *testing.T) {
@@ -85,17 +83,17 @@ func TestEIP4844Signing(t *testing.T) {
 
 	signer := NewDankSigner(big.NewInt(18))
 	msg := BlobTxMessage{
-		Nonce:            view.Uint64View(0),
-		Gas:              view.Uint64View(123457),
-		To:               AddressOptionalSSZ{Address: (*AddressSSZ)(&addr)},
-		GasTipCap:        view.Uint256View(*uint256.NewInt(42)),
-		GasFeeCap:        view.Uint256View(*uint256.NewInt(10)),
-		MaxFeePerDataGas: view.Uint256View(*uint256.NewInt(10)),
-		Value:            view.Uint256View(*uint256.NewInt(10)),
+		Nonce:            0,
+		Gas:              123457,
+		To:               &addr,
+		GasTipCap:        big.NewInt(42),
+		GasFeeCap:        big.NewInt(10),
+		MaxFeePerDataGas: big.NewInt(10),
+		Value:            big.NewInt(10),
 	}
 	var wrapData TxWrapData
 	wrapData, msg.BlobVersionedHashes = oneEmptyBlobWrapData()
-	txdata := &SignedBlobTx{Message: msg}
+	txdata := &msg
 	tx := NewTx(txdata, WithTxWrapData(wrapData))
 	tx, err := SignTx(tx, signer, key)
 	if err != nil {

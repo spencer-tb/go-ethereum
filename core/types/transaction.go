@@ -25,8 +25,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/protolambda/ztyp/codec"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -161,11 +159,11 @@ func (tx *Transaction) encodeTypedMinimal(w io.Writer) error {
 		return err
 	}
 	if tx.Type() == BlobTxType {
-		blobTx, ok := tx.inner.(*SignedBlobTx)
+		blobTx, ok := tx.inner.(*BlobTxMessage)
 		if !ok {
 			return ErrInvalidTxType
 		}
-		return EncodeSSZ(w, blobTx)
+		return rlp.Encode(w, blobTx)
 	} else {
 		return rlp.Encode(w, tx.inner)
 	}
@@ -260,6 +258,7 @@ func (tx *Transaction) UnmarshalMinimal(b []byte) error {
 	return nil
 }
 
+/*
 func DecodeSSZ(data []byte, dest codec.Deserializable) error {
 	return dest.Deserialize(codec.NewDecodingReader(bytes.NewReader(data), uint64(len(data))))
 }
@@ -267,6 +266,7 @@ func DecodeSSZ(data []byte, dest codec.Deserializable) error {
 func EncodeSSZ(w io.Writer, obj codec.Serializable) error {
 	return obj.Serialize(codec.NewEncodingWriter(w))
 }
+*/
 
 // decodeTyped decodes a typed transaction from the canonical format.
 func (tx *Transaction) decodeTyped(b []byte) (TxData, TxWrapData, error) {
@@ -276,7 +276,7 @@ func (tx *Transaction) decodeTyped(b []byte) (TxData, TxWrapData, error) {
 	switch b[0] {
 	case BlobTxType:
 		var wrapped BlobTxWrapper
-		err := DecodeSSZ(b[1:], &wrapped)
+		err := rlp.DecodeBytes(b[1:], &wrapped)
 		return &wrapped.Tx, &BlobTxWrapData{BlobKzgs: wrapped.BlobKzgs, Blobs: wrapped.Blobs, Proofs: wrapped.Proofs}, err
 	default:
 		minimal, err := tx.decodeTypedMinimal(b)
@@ -299,8 +299,8 @@ func (tx *Transaction) decodeTypedMinimal(b []byte) (TxData, error) {
 		err := rlp.DecodeBytes(b[1:], &inner)
 		return &inner, err
 	case BlobTxType:
-		var inner SignedBlobTx
-		err := DecodeSSZ(b[1:], &inner)
+		var inner BlobTxMessage
+		err := rlp.DecodeBytes(b[1:], &inner)
 		return &inner, err
 	default:
 		return nil, ErrTxTypeNotSupported
@@ -510,7 +510,7 @@ func (tx *Transaction) Hash() common.Hash {
 	case BlobTxType:
 		// TODO(eip-4844): We should remove this ugly switch by making hash()
 		// a part of the TxData interface
-		h = prefixedSSZHash(tx.Type(), tx.inner.(*SignedBlobTx))
+		h = prefixedRlpHash(tx.Type(), tx.inner.(*BlobTxMessage))
 	default:
 		h = prefixedRlpHash(tx.Type(), tx.inner)
 	}
@@ -564,8 +564,8 @@ func (tx *Transaction) VerifyBlobs() error {
 // kzgs and blobs may be empty if the transaction is not wrapped.
 func (tx *Transaction) BlobWrapData() (versionedHashes []common.Hash, kzgs BlobKzgs, blobs Blobs, proofs KZGProofs) {
 	if blobWrap, ok := tx.wrapData.(*BlobTxWrapData); ok {
-		if signedBlobTx, ok := tx.inner.(*SignedBlobTx); ok {
-			return signedBlobTx.Message.BlobVersionedHashes, blobWrap.BlobKzgs, blobWrap.Blobs, blobWrap.Proofs
+		if signedBlobTx, ok := tx.inner.(*BlobTxMessage); ok {
+			return signedBlobTx.BlobVersionedHashes, blobWrap.BlobKzgs, blobWrap.Blobs, blobWrap.Proofs
 		}
 	}
 	return nil, nil, nil, nil

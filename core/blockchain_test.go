@@ -40,7 +40,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/protolambda/ztyp/view"
 )
 
 // So we can deterministically seed different blockchains
@@ -4197,19 +4196,17 @@ func TestDataBlobTxs(t *testing.T) {
 			return
 		}
 		b.SetCoinbase(common.Address{1})
-		msg := types.BlobTxMessage{
-			Nonce: 0,
-			Gas:   500000,
+		txdata := &types.BlobTxMessage{
+			ChainID:             new(big.Int).Set(gspec.Config.ChainID),
+			Nonce:               0,
+			To:                  &aa,
+			Gas:                 500000,
+			GasFeeCap:           newGwei(5),
+			GasTipCap:           big.NewInt(2),
+			MaxFeePerDataGas:    big.NewInt(params.MinDataGasPrice),
+			BlobVersionedHashes: []common.Hash{one, two},
 		}
-		msg.To.Address = (*types.AddressSSZ)(&aa)
-		msg.ChainID.SetFromBig((*big.Int)(gspec.Config.ChainID))
-		msg.Nonce = view.Uint64View(0)
-		msg.GasFeeCap.SetFromBig(newGwei(5))
-		msg.GasTipCap.SetFromBig(big.NewInt(2))
-		msg.MaxFeePerDataGas.SetFromBig(big.NewInt(params.MinDataGasPrice))
 		// TODO(eip-4844): Add test case for max data fee too low
-		msg.BlobVersionedHashes = []common.Hash{one, two}
-		txdata := &types.SignedBlobTx{Message: msg}
 
 		tx := types.NewTx(txdata)
 		tx, _ = types.SignTx(tx, signer, key1)

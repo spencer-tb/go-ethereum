@@ -46,8 +46,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/holiman/uint256"
-	"github.com/protolambda/ztyp/view"
 )
 
 var (
@@ -1677,20 +1675,18 @@ func newRandomBlobTx(t *testing.T, chain *core.BlockChain, nonce uint64) *types.
 
 	recipient := common.HexToAddress("0x9a9070028361F7AAbeB3f2F2Dc07F82C4a98A02a")
 	gasPrice := big.NewInt(1 * params.InitialBaseFee).Uint64()
-	txData := &types.SignedBlobTx{
-		Message: types.BlobTxMessage{
-			ChainID:   view.Uint256View(*uint256.NewInt(chainID.Uint64())),
-			Nonce:     view.Uint64View(nonce),
-			Gas:       view.Uint64View(210000),
-			GasFeeCap: view.Uint256View(*uint256.NewInt(gasPrice)),
-			// fee per data gas needs to be higher than the minimum because this test produces more than one
-			// block and the latter one has non-zero excessDataGas
-			MaxFeePerDataGas:    view.Uint256View(*uint256.NewInt(params.MinDataGasPrice * 2)),
-			GasTipCap:           view.Uint256View(*uint256.NewInt(gasPrice)),
-			Value:               view.Uint256View(*uint256.NewInt(1000)),
-			To:                  types.AddressOptionalSSZ{Address: (*types.AddressSSZ)(&recipient)},
-			BlobVersionedHashes: versionedHashes,
-		},
+	txData := &types.BlobTxMessage{
+		ChainID:   chainID,
+		Nonce:     nonce,
+		Gas:       210000,
+		GasFeeCap: big.NewInt(int64(gasPrice)),
+		// fee per data gas needs to be higher than the minimum because this test produces more than one
+		// block and the latter one has non-zero excessDataGas
+		MaxFeePerDataGas:    big.NewInt(params.MinDataGasPrice * 2),
+		GasTipCap:           big.NewInt(int64(gasPrice)),
+		Value:               big.NewInt(1000),
+		To:                  &recipient,
+		BlobVersionedHashes: versionedHashes,
 	}
 	wrapData := &types.BlobTxWrapData{
 		BlobKzgs: commitments,

@@ -29,8 +29,6 @@ import (
 	"time"
 
 	gokzg4844 "github.com/crate-crypto/go-kzg-4844"
-	"github.com/holiman/uint256"
-	"github.com/protolambda/ztyp/view"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -80,7 +78,7 @@ var (
 
 // Returns a wrapper consisting of a single blob of all zeros that passes validation along with its
 // versioned hash.
-func oneEmptyBlobWrapData() (wrap *BlobTxWrapData, versionedHashes VersionedHashesView) {
+func oneEmptyBlobWrapData() (wrap *BlobTxWrapData, versionedHashes []common.Hash) {
 	cryptoCtx := kzg.CryptoCtx()
 	blob := Blob{}
 	commitment, _ := cryptoCtx.BlobToKZGCommitment(gokzg4844.Blob(blob), 1)
@@ -90,7 +88,8 @@ func oneEmptyBlobWrapData() (wrap *BlobTxWrapData, versionedHashes VersionedHash
 		Blobs:    Blobs{Blob(blob)},
 		Proofs:   KZGProofs{KZGProof(proof)},
 	}
-	return wrapData, VersionedHashesView{common.Hash(kzg.KZGToVersionedHash(gokzg4844.KZGCommitment(wrapData.BlobKzgs[0])))}
+	vh := kzg.KZGToVersionedHash(gokzg4844.KZGCommitment(wrapData.BlobKzgs[0]))
+	return wrapData, []common.Hash{common.Hash(vh)}
 }
 
 func TestDecodeEmptyTypedTx(t *testing.T) {
@@ -499,15 +498,15 @@ func TestTransactionCoding(t *testing.T) {
 			}
 		case 6:
 			msg := BlobTxMessage{
-				ChainID:    view.Uint256View(*uint256.NewInt(1)),
-				Nonce:      view.Uint64View(i),
-				Gas:        view.Uint64View(123457),
-				GasTipCap:  view.Uint256View(*uint256.NewInt(42)),
-				GasFeeCap:  view.Uint256View(*uint256.NewInt(10)),
-				AccessList: AccessListView(accesses),
+				ChainID:    big.NewInt(1),
+				Nonce:      i,
+				Gas:        123457,
+				GasTipCap:  big.NewInt(42),
+				GasFeeCap:  big.NewInt(10),
+				AccessList: accesses,
 			}
 			wrapData, msg.BlobVersionedHashes = oneEmptyBlobWrapData()
-			txdata = &SignedBlobTx{Message: msg}
+			txdata = &msg
 		}
 		tx, err := SignNewTx(key, signer, txdata, WithTxWrapData(wrapData))
 		if err != nil {
@@ -536,16 +535,15 @@ func TestTransactionCoding(t *testing.T) {
 // Make sure deserialized blob transactions never have nil access lists or versioned hash lists,
 // even when empty.
 func TestBlobTransactionEmptyLists(t *testing.T) {
-	txdata := &SignedBlobTx{
-		Message: BlobTxMessage{
-			ChainID:          view.Uint256View(*uint256.NewInt(1)),
-			Nonce:            view.Uint64View(1),
-			Gas:              view.Uint64View(123457),
-			GasTipCap:        view.Uint256View(*uint256.NewInt(42)),
-			GasFeeCap:        view.Uint256View(*uint256.NewInt(10)),
-			MaxFeePerDataGas: view.Uint256View(*uint256.NewInt(10000000)),
-		},
+	txdata := &BlobTxMessage{
+		ChainID:          big.NewInt(1),
+		Nonce:            1,
+		Gas:              123457,
+		GasTipCap:        big.NewInt(42),
+		GasFeeCap:        big.NewInt(10),
+		MaxFeePerDataGas: big.NewInt(10000000),
 	}
+
 	tx := NewTx(txdata)
 	data, err := tx.MarshalMinimal()
 	if err != nil {
@@ -574,17 +572,15 @@ func TestBlobTransactionMinimalCodec(t *testing.T) {
 		accesses = AccessList{{Address: addr, StorageKeys: []common.Hash{{0}}}}
 	)
 
-	txdata := &SignedBlobTx{
-		Message: BlobTxMessage{
-			ChainID:             view.Uint256View(*uint256.NewInt(1)),
-			Nonce:               view.Uint64View(1),
-			Gas:                 view.Uint64View(123457),
-			GasTipCap:           view.Uint256View(*uint256.NewInt(42)),
-			GasFeeCap:           view.Uint256View(*uint256.NewInt(10)),
-			AccessList:          AccessListView(accesses),
-			BlobVersionedHashes: VersionedHashesView{common.HexToHash("0x01624652859a6e98ffc1608e2af0147ca4e86e1ce27672d8d3f3c9d4ffd6ef7e")},
-			MaxFeePerDataGas:    view.Uint256View(*uint256.NewInt(10000000)),
-		},
+	txdata := &BlobTxMessage{
+		ChainID:             big.NewInt(1),
+		Nonce:               1,
+		Gas:                 123457,
+		GasTipCap:           big.NewInt(42),
+		GasFeeCap:           big.NewInt(10),
+		AccessList:          accesses,
+		BlobVersionedHashes: []common.Hash{common.HexToHash("0x01624652859a6e98ffc1608e2af0147ca4e86e1ce27672d8d3f3c9d4ffd6ef7e")},
+		MaxFeePerDataGas:    big.NewInt(10000000),
 	}
 	tx, err := SignNewTx(key, signer, txdata)
 	if err != nil {
@@ -715,10 +711,8 @@ func TestVerifyBlobTransaction(t *testing.T) {
 		t.Fatalf("failed to compute commitments: %v", err)
 	}
 
-	txData := SignedBlobTx{
-		Message: BlobTxMessage{
-			BlobVersionedHashes: hashes,
-		},
+	txData := BlobTxMessage{
+		BlobVersionedHashes: hashes,
 	}
 	wrapData := BlobTxWrapData{
 		BlobKzgs: commitments,

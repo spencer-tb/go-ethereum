@@ -28,9 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/holiman/uint256"
-	"github.com/protolambda/ztyp/view"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -132,22 +129,20 @@ func blobTx(nonce uint64, gaslimit uint64, gasFee uint64, tip uint64, dataGasFee
 	blobData.BlobKzgs = commitments
 	blobData.Proofs = proofs
 
-	address := types.AddressSSZ(common.Address{})
-	sbtx := &types.SignedBlobTx{
-		Message: types.BlobTxMessage{
-			Nonce:               view.Uint64View(nonce),
-			GasTipCap:           view.Uint256View(*uint256.NewInt(tip)),
-			GasFeeCap:           view.Uint256View(*uint256.NewInt(gasFee)),
-			Gas:                 view.Uint64View(gaslimit),
-			To:                  types.AddressOptionalSSZ{&address},
-			Value:               view.Uint256View(*uint256.NewInt(100)),
-			Data:                nil,
-			AccessList:          nil,
-			MaxFeePerDataGas:    view.Uint256View(*uint256.NewInt(dataGasFee)),
-			BlobVersionedHashes: hashes,
-		},
+	address := common.Address{}
+	sbtx := &types.BlobTxMessage{
+		ChainID:             new(big.Int).Set(params.TestChainConfig.ChainID),
+		Nonce:               nonce,
+		GasTipCap:           big.NewInt(int64(tip)),
+		GasFeeCap:           big.NewInt(int64(gasFee)),
+		Gas:                 gaslimit,
+		To:                  &address,
+		Value:               big.NewInt(100),
+		Data:                nil,
+		AccessList:          nil,
+		MaxFeePerDataGas:    big.NewInt(int64(dataGasFee)),
+		BlobVersionedHashes: hashes,
 	}
-	sbtx.Message.ChainID.SetFromBig(params.TestChainConfig.ChainID)
 
 	tx, err := types.SignNewTx(key, types.LatestSignerForChainID(params.TestChainConfig.ChainID), sbtx, types.WithTxWrapData(blobData))
 	if err != nil {

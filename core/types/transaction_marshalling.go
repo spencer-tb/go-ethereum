@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/protolambda/ztyp/view"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
@@ -104,22 +102,21 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		enc.V = (*hexutil.Big)(itx.V)
 		enc.R = (*hexutil.Big)(itx.R)
 		enc.S = (*hexutil.Big)(itx.S)
-	case *SignedBlobTx:
-		enc.ChainID = (*hexutil.Big)(u256ToBig(&itx.Message.ChainID))
-		enc.AccessList = (*AccessList)(&itx.Message.AccessList)
-		enc.Nonce = (*hexutil.Uint64)(&itx.Message.Nonce)
-		enc.Gas = (*hexutil.Uint64)(&itx.Message.Gas)
-		enc.MaxFeePerGas = (*hexutil.Big)(u256ToBig(&itx.Message.GasFeeCap))
-		enc.MaxPriorityFeePerGas = (*hexutil.Big)(u256ToBig(&itx.Message.GasTipCap))
-		enc.Value = (*hexutil.Big)(u256ToBig(&itx.Message.Value))
-		enc.Data = (*hexutil.Bytes)(&itx.Message.Data)
+	case *BlobTxMessage:
+		enc.ChainID = (*hexutil.Big)(itx.ChainID)
+		enc.AccessList = &itx.AccessList
+		enc.Nonce = (*hexutil.Uint64)(&itx.Nonce)
+		enc.Gas = (*hexutil.Uint64)(&itx.Gas)
+		enc.MaxFeePerGas = (*hexutil.Big)(itx.GasFeeCap)
+		enc.MaxPriorityFeePerGas = (*hexutil.Big)(itx.GasTipCap)
+		enc.Value = (*hexutil.Big)(itx.Value)
+		enc.Data = (*hexutil.Bytes)(&itx.Data)
 		enc.To = tx.To()
-		v, r, s := tx.RawSignatureValues()
-		enc.V = (*hexutil.Big)(v)
-		enc.R = (*hexutil.Big)(r)
-		enc.S = (*hexutil.Big)(s)
-		enc.MaxFeePerDataGas = (*hexutil.Big)(u256ToBig(&itx.Message.MaxFeePerDataGas))
-		enc.BlobVersionedHashes = itx.Message.BlobVersionedHashes
+		enc.V = (*hexutil.Big)(itx.V)
+		enc.R = (*hexutil.Big)(itx.R)
+		enc.S = (*hexutil.Big)(itx.S)
+		enc.MaxFeePerDataGas = (*hexutil.Big)(itx.MaxFeePerDataGas)
+		enc.BlobVersionedHashes = itx.BlobVersionedHashes
 		if tx.wrapData != nil {
 			enc.Blobs = tx.wrapData.blobs()
 			enc.BlobKzgs = tx.wrapData.kzgs()
@@ -294,71 +291,71 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			}
 		}
 	case BlobTxType:
-		var itx SignedBlobTx
+		var itx BlobTxMessage
 		inner = &itx
 		// Access list is optional for now
 		if dec.AccessList != nil {
-			itx.Message.AccessList = AccessListView(*dec.AccessList)
+			itx.AccessList = *dec.AccessList
 		} else {
-			itx.Message.AccessList = AccessListView(AccessList{})
+			itx.AccessList = AccessList{}
 		}
 		if dec.ChainID == nil {
 			return errors.New("missing required field 'chainId' in transaction")
 		}
-		itx.Message.ChainID.SetFromBig((*big.Int)(dec.ChainID))
+		itx.ChainID = (*big.Int)(dec.ChainID)
 		if dec.To != nil {
-			itx.Message.To.Address = (*AddressSSZ)(dec.To)
+			itx.To = dec.To
 		}
 		if dec.Nonce == nil {
 			return errors.New("missing required field 'nonce' in transaction")
 		}
-		itx.Message.Nonce = view.Uint64View(*dec.Nonce)
+		itx.Nonce = uint64(*dec.Nonce)
 		if dec.MaxPriorityFeePerGas == nil {
 			return errors.New("missing required field 'maxPriorityFeePerGas' for txdata")
 		}
-		itx.Message.GasTipCap.SetFromBig((*big.Int)(dec.MaxPriorityFeePerGas))
+		itx.GasTipCap = (*big.Int)(dec.MaxPriorityFeePerGas)
 		if dec.MaxFeePerGas == nil {
 			return errors.New("missing required field 'maxFeePerGas' for txdata")
 		}
-		itx.Message.GasFeeCap.SetFromBig((*big.Int)(dec.MaxFeePerGas))
+		itx.GasFeeCap = (*big.Int)(dec.MaxFeePerGas)
 		if dec.Gas == nil {
 			return errors.New("missing required field 'gas' for txdata")
 		}
-		itx.Message.Gas = view.Uint64View(*dec.Gas)
+		itx.Gas = uint64(*dec.Gas)
 		if dec.Value == nil {
 			return errors.New("missing required field 'value' in transaction")
 		}
-		itx.Message.Value.SetFromBig((*big.Int)(dec.Value))
+		itx.Value = (*big.Int)(dec.Value)
 		if dec.Data == nil {
 			return errors.New("missing required field 'input' in transaction")
 		}
-		itx.Message.Data = TxDataView(*dec.Data)
+		itx.Data = *dec.Data
 		if dec.V == nil {
 			return errors.New("missing required field 'v' in transaction")
 		}
-		itx.Signature.V = view.Uint8View((*big.Int)(dec.V).Uint64())
+		itx.V = (*big.Int)(dec.V)
 		if dec.R == nil {
 			return errors.New("missing required field 'r' in transaction")
 		}
-		itx.Signature.R.SetFromBig((*big.Int)(dec.R))
+		itx.R = (*big.Int)(dec.R)
 		if dec.S == nil {
 			return errors.New("missing required field 's' in transaction")
 		}
-		itx.Signature.S.SetFromBig((*big.Int)(dec.S))
-		withSignature := (*big.Int)(dec.V).Sign() != 0 || (*big.Int)(dec.R).Sign() != 0 || (*big.Int)(dec.S).Sign() != 0
+		itx.S = (*big.Int)(dec.S)
+		withSignature := itx.V.Sign() != 0 || itx.R.Sign() != 0 || itx.S.Sign() != 0
 		if withSignature {
-			if err := sanityCheckSignature(big.NewInt(int64(itx.Signature.V)), u256ToBig(&itx.Signature.R), u256ToBig(&itx.Signature.S), false); err != nil {
+			if err := sanityCheckSignature(itx.V, itx.R, itx.S, false); err != nil {
 				return err
 			}
 		}
 		if dec.MaxFeePerDataGas == nil {
 			return errors.New("missing required field 'maxFeePerDataGas' for txdata")
 		}
-		itx.Message.MaxFeePerDataGas.SetFromBig((*big.Int)(dec.MaxFeePerDataGas))
+		itx.MaxFeePerDataGas = (*big.Int)(dec.MaxFeePerDataGas)
 		if dec.BlobVersionedHashes == nil {
 			return errors.New("missing required field 'blobVersionedHashes' in transaction")
 		}
-		itx.Message.BlobVersionedHashes = dec.BlobVersionedHashes
+		itx.BlobVersionedHashes = dec.BlobVersionedHashes
 		// A BlobTx may not contain data
 		if len(dec.Blobs) != 0 || len(dec.BlobKzgs) != 0 {
 			tx.wrapData = &BlobTxWrapData{

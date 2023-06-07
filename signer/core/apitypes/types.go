@@ -28,8 +28,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/protolambda/ztyp/view"
-
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -135,16 +133,17 @@ func (args *SendTxArgs) ToTransaction() (*types.Transaction, error) {
 		if args.AccessList != nil {
 			al = *args.AccessList
 		}
-		msg := types.BlobTxMessage{}
-		msg.To.Address = (*types.AddressSSZ)(to)
-		msg.ChainID.SetFromBig((*big.Int)(args.ChainID))
-		msg.Nonce = view.Uint64View(args.Nonce)
-		msg.Gas = view.Uint64View(args.Gas)
-		msg.GasFeeCap.SetFromBig((*big.Int)(args.MaxFeePerGas))
-		msg.GasTipCap.SetFromBig((*big.Int)(args.MaxPriorityFeePerGas))
-		msg.Value.SetFromBig((*big.Int)(&args.Value))
-		msg.Data = input
-		msg.AccessList = types.AccessListView(al)
+		msg := types.BlobTxMessage{
+			To:         to,
+			ChainID:    (*big.Int)(args.ChainID),
+			Nonce:      uint64(args.Nonce),
+			Gas:        uint64(args.Gas),
+			GasFeeCap:  (*big.Int)(args.MaxFeePerGas),
+			GasTipCap:  (*big.Int)(args.MaxPriorityFeePerGas),
+			Value:      (*big.Int)(&args.Value),
+			Data:       input,
+			AccessList: al,
+		}
 		commitments, hashes, proofs, err := types.Blobs(args.Blobs).ComputeCommitmentsAndProofs()
 		if err != nil {
 			return nil, fmt.Errorf("invalid blobs: %v", err)
@@ -155,7 +154,7 @@ func (args *SendTxArgs) ToTransaction() (*types.Transaction, error) {
 			Proofs:   proofs,
 			BlobKzgs: commitments,
 		}
-		data = &types.SignedBlobTx{Message: msg}
+		data = &msg
 		return types.NewTx(data, types.WithTxWrapData(&wrapData)), nil
 	case args.MaxFeePerGas != nil:
 		al := types.AccessList{}

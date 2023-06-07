@@ -23,8 +23,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/protolambda/ztyp/view"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -306,17 +304,18 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 		if args.AccessList != nil {
 			al = *args.AccessList
 		}
-		msg := types.BlobTxMessage{}
-		msg.To.Address = (*types.AddressSSZ)(args.To)
-		msg.ChainID.SetFromBig((*big.Int)(args.ChainID))
-		msg.Nonce = view.Uint64View(*args.Nonce)
-		msg.Gas = view.Uint64View(*args.Gas)
-		msg.GasFeeCap.SetFromBig((*big.Int)(args.MaxFeePerGas))
-		msg.GasTipCap.SetFromBig((*big.Int)(args.MaxPriorityFeePerGas))
-		msg.MaxFeePerDataGas.SetFromBig((*big.Int)(args.MaxFeePerDataGas))
-		msg.Value.SetFromBig((*big.Int)(args.Value))
-		msg.Data = args.data()
-		msg.AccessList = types.AccessListView(al)
+		msg := types.BlobTxMessage{
+			To:               args.To,
+			ChainID:          new(big.Int).Set((*big.Int)(args.ChainID)),
+			Nonce:            uint64(*args.Nonce),
+			Gas:              uint64(*args.Gas),
+			GasFeeCap:        new(big.Int).Set((*big.Int)(args.MaxFeePerGas)),
+			GasTipCap:        new(big.Int).Set((*big.Int)(args.MaxPriorityFeePerGas)),
+			MaxFeePerDataGas: new(big.Int).Set((*big.Int)(args.MaxFeePerDataGas)),
+			Value:            new(big.Int).Set((*big.Int)(args.Value)),
+			Data:             args.data(),
+			AccessList:       al,
+		}
 		commitments, versionedHashes, proofs, err := types.Blobs(args.Blobs).ComputeCommitmentsAndProofs()
 		// XXX if blobs are invalid we will omit the wrap-data (and an error will pop-up later)
 		if err == nil {
@@ -327,7 +326,7 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 			}))
 			msg.BlobVersionedHashes = versionedHashes
 		}
-		data = &types.SignedBlobTx{Message: msg}
+		data = &msg
 	case args.MaxFeePerGas != nil:
 		al := types.AccessList{}
 		if args.AccessList != nil {
