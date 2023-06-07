@@ -142,7 +142,7 @@ func odrContractCall(ctx context.Context, db ethdb.Database, config *params.Chai
 					SkipAccountChecks: true,
 				}
 
-				context := core.NewEVMBlockContext(header, nil, bc, nil)
+				context := core.NewEVMBlockContext(header, bc, nil)
 				txContext := core.NewEVMTxContext(msg)
 				vmenv := vm.NewEVM(context, txContext, statedb, config, vm.Config{NoBaseFee: true})
 
@@ -166,7 +166,7 @@ func odrContractCall(ctx context.Context, db ethdb.Database, config *params.Chai
 				Data:              data,
 				SkipAccountChecks: true,
 			}
-			context := core.NewEVMBlockContext(header, nil, lc, nil)
+			context := core.NewEVMBlockContext(header, lc, nil)
 			txContext := core.NewEVMTxContext(msg)
 			vmenv := vm.NewEVM(context, txContext, state, config, vm.Config{NoBaseFee: true})
 			gp := new(core.GasPool).AddGas(math.MaxUint64).AddDataGas(math.MaxUint64)

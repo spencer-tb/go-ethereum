@@ -89,7 +89,8 @@ type btHeader struct {
 	Timestamp        uint64
 	BaseFeePerGas    *big.Int
 	WithdrawalsRoot  *common.Hash
-	ExcessDataGas    *big.Int
+	DataGasUsed      *uint64
+	ExcessDataGas    *uint64
 }
 
 type btHeaderMarshaling struct {
@@ -100,7 +101,8 @@ type btHeaderMarshaling struct {
 	GasUsed       math.HexOrDecimal64
 	Timestamp     math.HexOrDecimal64
 	BaseFeePerGas *math.HexOrDecimal256
-	ExcessDataGas *math.HexOrDecimal256
+	DataGasUsed   *math.HexOrDecimal64
+	ExcessDataGas *math.HexOrDecimal64
 }
 
 func (t *BlockTest) Run(snapshotter bool) error {

@@ -307,6 +307,9 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 		return err
 	}
 	if !chain.Config().IsCancun(header.Time) {
+		if header.DataGasUsed != nil {
+			return fmt.Errorf("invalid dataGasUsed before fork: have %v, expected 'nil'", header.DataGasUsed)
+		}
 		if header.ExcessDataGas != nil {
 			return fmt.Errorf("invalid excessDataGas before fork: have %v, expected 'nil'", header.ExcessDataGas)
 		}
@@ -603,6 +606,10 @@ func (ethash *Ethash) Prepare(chain consensus.ChainHeaderReader, header *types.H
 		return consensus.ErrUnknownAncestor
 	}
 	header.Difficulty = ethash.CalcDifficulty(chain, header.Time, parent)
+	if chain.Config().IsCancun(header.Time) {
+		edg := misc.CalcExcessDataGas(parent.ExcessDataGas, parent.DataGasUsed)
+		header.SetExcessDataGas(&edg)
+	}
 	return nil
 }
 
@@ -613,11 +620,8 @@ func (ethash *Ethash) Finalize(chain consensus.ChainHeaderReader, header *types.
 	accumulateRewards(chain.Config(), state, header, uncles)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	if chain.Config().IsCancun(header.Time) {
-		if parent := chain.GetHeaderByHash(header.ParentHash); parent != nil {
-			header.SetExcessDataGas(misc.CalcExcessDataGas(parent.ExcessDataGas, misc.CountBlobs(txs)))
-		} else {
-			header.SetExcessDataGas(new(big.Int))
-		}
+		dgu := uint64(misc.CountBlobs(txs) * params.DataGasPerBlob)
+		header.SetDataGasUsed(&dgu)
 	}
 }
 

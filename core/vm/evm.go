@@ -77,7 +77,7 @@ type BlockContext struct {
 	Difficulty    *big.Int       // Provides information for DIFFICULTY
 	BaseFee       *big.Int       // Provides information for BASEFEE
 	Random        *common.Hash   // Provides information for PREVRANDAO
-	ExcessDataGas *big.Int       // Provides information for EIP-4844 fee calculation
+	ExcessDataGas *uint64        // Provides information for EIP-4844 fee calculation
 }
 
 // TxContext provides the EVM with information about a transaction.

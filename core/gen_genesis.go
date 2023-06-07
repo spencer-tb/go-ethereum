@@ -31,7 +31,8 @@ func (g Genesis) MarshalJSON() ([]byte, error) {
 		GasUsed       math.HexOrDecimal64                         `json:"gasUsed"`
 		ParentHash    common.Hash                                 `json:"parentHash"`
 		BaseFee       *math.HexOrDecimal256                       `json:"baseFeePerGas"`
-		ExcessDataGas *math.HexOrDecimal256                       `json:"excessDataGas"`
+		DataGasUsed   *math.HexOrDecimal64                        `json:"dataGasUsed"`
+		ExcessDataGas *math.HexOrDecimal64                        `json:"excessDataGas"`
 	}
 	var enc Genesis
 	enc.Config = g.Config
@@ -52,7 +53,8 @@ func (g Genesis) MarshalJSON() ([]byte, error) {
 	enc.GasUsed = math.HexOrDecimal64(g.GasUsed)
 	enc.ParentHash = g.ParentHash
 	enc.BaseFee = (*math.HexOrDecimal256)(g.BaseFee)
-	enc.ExcessDataGas = (*math.HexOrDecimal256)(g.ExcessDataGas)
+	enc.DataGasUsed = (*math.HexOrDecimal64)(g.DataGasUsed)
+	enc.ExcessDataGas = (*math.HexOrDecimal64)(g.ExcessDataGas)
 	return json.Marshal(&enc)
 }
 
@@ -72,7 +74,8 @@ func (g *Genesis) UnmarshalJSON(input []byte) error {
 		GasUsed       *math.HexOrDecimal64                        `json:"gasUsed"`
 		ParentHash    *common.Hash                                `json:"parentHash"`
 		BaseFee       *math.HexOrDecimal256                       `json:"baseFeePerGas"`
-		ExcessDataGas *math.HexOrDecimal256                       `json:"excessDataGas"`
+		DataGasUsed   *math.HexOrDecimal64                        `json:"dataGasUsed"`
+		ExcessDataGas *math.HexOrDecimal64                        `json:"excessDataGas"`
 	}
 	var dec Genesis
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -123,8 +126,11 @@ func (g *Genesis) UnmarshalJSON(input []byte) error {
 	if dec.BaseFee != nil {
 		g.BaseFee = (*big.Int)(dec.BaseFee)
 	}
+	if dec.DataGasUsed != nil {
+		g.DataGasUsed = (*uint64)(dec.DataGasUsed)
+	}
 	if dec.ExcessDataGas != nil {
-		g.ExcessDataGas = (*big.Int)(dec.ExcessDataGas)
+		g.ExcessDataGas = (*uint64)(dec.ExcessDataGas)
 	}
 	return nil
 }

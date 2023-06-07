@@ -323,7 +323,7 @@ func (rs Receipts) EncodeIndex(i int, w *bytes.Buffer) {
 
 // DeriveFields fills the receipts with their computed fields based on consensus
 // data and contextual infos like containing block and transactions.
-func (rs Receipts) DeriveFields(config *params.ChainConfig, hash common.Hash, number uint64, time uint64, baseFee *big.Int, parentExcessDataGas *big.Int, txs []*Transaction) error {
+func (rs Receipts) DeriveFields(config *params.ChainConfig, hash common.Hash, number uint64, time uint64, baseFee *big.Int, excessDataGas *uint64, txs []*Transaction) error {
 	signer := MakeSigner(config, new(big.Int).SetUint64(number), time)
 
 	if len(txs) != len(rs) {
@@ -360,7 +360,7 @@ func (rs Receipts) DeriveFields(config *params.ChainConfig, hash common.Hash, nu
 		// Set data gas fields for blob-containing txs
 		if len(txs[i].DataHashes()) > 0 {
 			rs[i].DataGasUsed = GetDataGasUsed(len(txs[i].DataHashes()))
-			rs[i].DataGasPrice = GetDataGasPrice(parentExcessDataGas)
+			rs[i].DataGasPrice = GetDataGasPrice(excessDataGas)
 		}
 	}
 	return rs.DeriveLogFields(hash, number, txs)

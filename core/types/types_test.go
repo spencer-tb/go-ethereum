@@ -32,6 +32,10 @@ func (d *devnull) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+func puint64(n uint64) *uint64 {
+	return &n
+}
+
 func BenchmarkEncodeRLP(b *testing.B) {
 	benchRLP(b, true)
 }
@@ -81,7 +85,8 @@ func benchRLP(b *testing.B, encode bool) {
 				Time:          555,
 				Extra:         make([]byte, 32),
 				BaseFee:       big.NewInt(10000000000),
-				ExcessDataGas: big.NewInt(0),
+				DataGasUsed:   puint64(0),
+				ExcessDataGas: puint64(0),
 			},
 		},
 		{

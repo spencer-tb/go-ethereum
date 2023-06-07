@@ -926,7 +926,7 @@ type BlockOverrides struct {
 	Coinbase      *common.Address
 	Random        *common.Hash
 	BaseFee       *hexutil.Big
-	ExcessDataGas *hexutil.Big
+	ExcessDataGas *hexutil.Uint64
 }
 
 // Apply overrides the given header fields into the given block context.
@@ -956,7 +956,7 @@ func (diff *BlockOverrides) Apply(blockCtx *vm.BlockContext) {
 		blockCtx.BaseFee = diff.BaseFee.ToInt()
 	}
 	if diff.ExcessDataGas != nil {
-		blockCtx.ExcessDataGas = diff.BaseFee.ToInt()
+		blockCtx.ExcessDataGas = (*uint64)(diff.ExcessDataGas)
 	}
 }
 
@@ -1221,8 +1221,11 @@ func RPCMarshalHeader(head *types.Header) map[string]interface{} {
 	if head.WithdrawalsHash != nil {
 		result["withdrawalsRoot"] = *head.WithdrawalsHash
 	}
+	if head.DataGasUsed != nil {
+		result["dataGasUsed"] = (*hexutil.Uint64)(head.DataGasUsed)
+	}
 	if head.ExcessDataGas != nil {
-		result["excessDataGas"] = (*hexutil.Big)(head.ExcessDataGas)
+		result["excessDataGas"] = (*hexutil.Uint64)(head.ExcessDataGas)
 	}
 
 	if head.WithdrawalsHash != nil {

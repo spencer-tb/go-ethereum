@@ -39,7 +39,7 @@ type ChainContext interface {
 //
 // excessDataGas must be set to the excessDataGas value from the *parent* block header, and can be
 // nil if the parent block is not of EIP-4844 type. It is read only.
-func NewEVMBlockContext(header *types.Header, excessDataGas *big.Int, chain ChainContext, author *common.Address) vm.BlockContext {
+func NewEVMBlockContext(header *types.Header, chain ChainContext, author *common.Address) vm.BlockContext {
 	var (
 		beneficiary common.Address
 		baseFee     *big.Int
@@ -58,12 +58,6 @@ func NewEVMBlockContext(header *types.Header, excessDataGas *big.Int, chain Chai
 	if header.Difficulty.Cmp(common.Big0) == 0 {
 		random = &header.MixDigest
 	}
-	// In the event excessDataGas is nil (which happens if the parent block is pre-cancun),
-	// we bootstrap BlockContext.ExcessDataGas with the zero value.
-	edg := new(big.Int)
-	if excessDataGas != nil {
-		edg.Set(excessDataGas)
-	}
 	return vm.BlockContext{
 		CanTransfer:   CanTransfer,
 		Transfer:      Transfer,
@@ -75,7 +69,7 @@ func NewEVMBlockContext(header *types.Header, excessDataGas *big.Int, chain Chai
 		BaseFee:       baseFee,
 		GasLimit:      header.GasLimit,
 		Random:        random,
-		ExcessDataGas: edg,
+		ExcessDataGas: header.ExcessDataGas,
 	}
 }
 

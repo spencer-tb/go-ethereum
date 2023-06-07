@@ -349,6 +349,9 @@ func (c *Clique) verifyCascadingFields(chain consensus.ChainHeaderReader, header
 		return err
 	}
 	if !chain.Config().IsCancun(header.Time) {
+		if header.DataGasUsed != nil {
+			return fmt.Errorf("invalid dataGasUsed before fork: have %v, want <nil>", header.DataGasUsed)
+		}
 		if header.ExcessDataGas != nil {
 			return fmt.Errorf("invalid excessDataGas before fork: have %v, want <nil>", header.ExcessDataGas)
 		}
@@ -570,6 +573,10 @@ func (c *Clique) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 	if header.Time < uint64(time.Now().Unix()) {
 		header.Time = uint64(time.Now().Unix())
 	}
+	if chain.Config().IsCancun(header.Time) {
+		edg := misc.CalcExcessDataGas(parent.ExcessDataGas, parent.DataGasUsed)
+		header.SetExcessDataGas(&edg)
+	}
 	return nil
 }
 
@@ -580,11 +587,8 @@ func (c *Clique) Finalize(chain consensus.ChainHeaderReader, header *types.Heade
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.UncleHash = types.CalcUncleHash(nil)
 	if chain.Config().IsCancun(header.Time) {
-		if parent := chain.GetHeaderByHash(header.ParentHash); parent != nil {
-			header.SetExcessDataGas(misc.CalcExcessDataGas(parent.ExcessDataGas, misc.CountBlobs(txs)))
-		} else {
-			header.SetExcessDataGas(new(big.Int))
-		}
+		dgu := uint64(misc.CountBlobs(txs) * params.DataGasPerBlob)
+		header.SetExcessDataGas(&dgu)
 	}
 }
 

@@ -87,8 +87,9 @@ type Header struct {
 	// WithdrawalsHash was added by EIP-4895 and is ignored in legacy headers.
 	WithdrawalsHash *common.Hash `json:"withdrawalsRoot" rlp:"optional"`
 
-	// ExcessDataGas was added by EIP-4844 and is ignored in legacy headers.
-	ExcessDataGas *big.Int `json:"excessDataGas" rlp:"optional"`
+	// Data gas fields are added by EIP-4844 and is ignored in legacy headers.
+	DataGasUsed   *uint64 `json:"dataGasUsed" rlp:"optional"`
+	ExcessDataGas *uint64 `json:"excessDataGas" rlp:"optional"`
 
 	/*
 		TODO (MariusVanDerWijden) Add this field once needed
@@ -106,7 +107,8 @@ type headerMarshaling struct {
 	Time          hexutil.Uint64
 	Extra         hexutil.Bytes
 	BaseFee       *hexutil.Big
-	ExcessDataGas *hexutil.Big
+	DataGasUsed   *hexutil.Uint64
+	ExcessDataGas *hexutil.Uint64
 	Hash          common.Hash `json:"hash"` // adds call to Hash() in MarshalJSON
 }
 
@@ -116,10 +118,22 @@ func (h *Header) TimeBig() *big.Int {
 }
 
 // SetExcessDataGas sets the excess_data_gas field in the header
-func (h *Header) SetExcessDataGas(v *big.Int) {
-	h.ExcessDataGas = new(big.Int)
+func (h *Header) SetExcessDataGas(v *uint64) {
 	if v != nil {
-		h.ExcessDataGas.Set(v)
+		edg := *v
+		h.ExcessDataGas = &edg
+	}
+	if h.WithdrawalsHash == nil {
+		// leaving this nil would result in a buggy encoding
+		h.WithdrawalsHash = &EmptyRootHash
+	}
+}
+
+// SetExcessDataGas sets the excess_data_gas field in the header
+func (h *Header) SetDataGasUsed(v *uint64) {
+	if v != nil {
+		dgu := *v
+		h.DataGasUsed = &dgu
 	}
 	if h.WithdrawalsHash == nil {
 		// leaving this nil would result in a buggy encoding
@@ -143,7 +157,10 @@ func (h *Header) Size() common.StorageSize {
 		feeBits = h.BaseFee.BitLen()
 	}
 	if h.ExcessDataGas != nil {
-		feeBits += h.ExcessDataGas.BitLen()
+		feeBits += 64
+	}
+	if h.DataGasUsed != nil {
+		feeBits += 64
 	}
 	var withdrawalBytes int
 	if h.WithdrawalsHash != nil {
@@ -171,11 +188,6 @@ func (h *Header) SanityCheck() error {
 	if h.BaseFee != nil {
 		if bfLen := h.BaseFee.BitLen(); bfLen > 256 {
 			return fmt.Errorf("too large base fee: bitlen %d", bfLen)
-		}
-	}
-	if h.ExcessDataGas != nil {
-		if bfLen := h.ExcessDataGas.BitLen(); bfLen > 256 {
-			return fmt.Errorf("too large excess data gas: bitlen %d", bfLen)
 		}
 	}
 	return nil
@@ -473,11 +485,20 @@ func (b *Block) Withdrawals() Withdrawals {
 	return b.withdrawals
 }
 
-func (b *Block) ExcessDataGas() *big.Int {
+func (b *Block) ExcessDataGas() *uint64 {
 	if b.header.ExcessDataGas == nil {
 		return nil
 	}
-	return new(big.Int).Set(b.header.ExcessDataGas)
+	v := *b.header.ExcessDataGas
+	return &v
+}
+
+func (b *Block) DataGasUsed() *uint64 {
+	if b.header.DataGasUsed == nil {
+		return nil
+	}
+	v := *b.header.DataGasUsed
+	return &v
 }
 
 func (b *Block) Header() *Header { return CopyHeader(b.header) }

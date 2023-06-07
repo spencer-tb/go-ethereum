@@ -18,7 +18,6 @@ package misc
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -26,20 +25,21 @@ import (
 )
 
 // CalcExcessDataGas implements calc_excess_data_gas from EIP-4844
-func CalcExcessDataGas(parentExcessDataGas *big.Int, newBlobs int) *big.Int {
-	excessDataGas := new(big.Int)
+func CalcExcessDataGas(parentExcessDataGas *uint64, parentDataGasUsed *uint64) uint64 {
+	var (
+		pEdg = uint64(0)
+		pDgu = uint64(0)
+	)
 	if parentExcessDataGas != nil {
-		excessDataGas.Set(parentExcessDataGas)
+		pEdg = *parentExcessDataGas
 	}
-	consumedGas := big.NewInt(params.DataGasPerBlob)
-	consumedGas.Mul(consumedGas, big.NewInt(int64(newBlobs)))
-
-	excessDataGas.Add(excessDataGas, consumedGas)
-	targetGas := big.NewInt(params.TargetDataGasPerBlock)
-	if excessDataGas.Cmp(targetGas) < 0 {
-		return new(big.Int)
+	if parentDataGasUsed != nil {
+		pDgu = *parentDataGasUsed
 	}
-	return new(big.Int).Set(excessDataGas.Sub(excessDataGas, targetGas))
+	if pEdg+pDgu < params.TargetDataGasPerBlock {
+		return 0
+	}
+	return pEdg + pDgu - params.TargetDataGasPerBlock
 }
 
 // CountBlobs returns the number of blob transactions in txs
@@ -57,21 +57,36 @@ func VerifyEip4844Header(config *params.ChainConfig, parent, header *types.Heade
 	if header.ExcessDataGas == nil {
 		return fmt.Errorf("header is missing excessDataGas")
 	}
+	if header.DataGasUsed == nil {
+		return fmt.Errorf("header is missing dataGasUsed")
+	}
+	var (
+		excessDataGas = *header.ExcessDataGas
+	)
+	if excessDataGas != CalcExcessDataGas(parent.ExcessDataGas, parent.DataGasUsed) {
+		return fmt.Errorf("invalid excessDataGas: have %d want %d", excessDataGas, CalcExcessDataGas(parent.ExcessDataGas, parent.DataGasUsed))
+	}
 	return nil
 }
 
 // VerifyExcessDataGas verifies the excess_data_gas in the block header
 func VerifyExcessDataGas(chainReader ChainReader, block *types.Block) error {
 	excessDataGas := block.ExcessDataGas()
+	dataGasUsed := block.DataGasUsed()
 	if !chainReader.Config().IsCancun(block.Time()) {
 		if excessDataGas != nil {
 			return fmt.Errorf("unexpected excessDataGas in header")
 		}
+		if dataGasUsed != nil {
+			return fmt.Errorf("unexpected dataGasUsed in header")
+		}
 		return nil
-
 	}
 	if excessDataGas == nil {
 		return fmt.Errorf("header is missing excessDataGas")
+	}
+	if dataGasUsed == nil {
+		return fmt.Errorf("header is missing dataGasUsed")
 	}
 
 	number, parent := block.NumberU64()-1, block.ParentHash()
@@ -79,10 +94,9 @@ func VerifyExcessDataGas(chainReader ChainReader, block *types.Block) error {
 	if parentBlock == nil {
 		return fmt.Errorf("parent block not found")
 	}
-	numBlobs := CountBlobs(block.Transactions())
-	expectedEDG := CalcExcessDataGas(parentBlock.ExcessDataGas(), numBlobs)
-	if excessDataGas.Cmp(expectedEDG) != 0 {
-		return fmt.Errorf("invalid excessDataGas: have %s want %v", excessDataGas, expectedEDG)
+	expectedEDG := CalcExcessDataGas(parentBlock.ExcessDataGas(), parentBlock.DataGasUsed())
+	if *excessDataGas != expectedEDG {
+		return fmt.Errorf("invalid excessDataGas: have %d want %d", *excessDataGas, expectedEDG)
 	}
 	return nil
 }

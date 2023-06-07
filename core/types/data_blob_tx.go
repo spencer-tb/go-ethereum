@@ -145,11 +145,11 @@ func fakeExponential(factor, num, denom *big.Int) *big.Int {
 }
 
 // GetDataGasPrice implements get_data_gas_price from EIP-4844
-func GetDataGasPrice(excessDataGas *big.Int) *big.Int {
+func GetDataGasPrice(excessDataGas *uint64) *big.Int {
 	if excessDataGas == nil {
 		return nil
 	}
-	return fakeExponential(big.NewInt(params.MinDataGasPrice), excessDataGas, big.NewInt(params.DataGasPriceUpdateFraction))
+	return fakeExponential(big.NewInt(params.MinDataGasPrice), new(big.Int).SetUint64(*excessDataGas), big.NewInt(params.DataGasPriceUpdateFraction))
 }
 
 // GetDataGasUsed returns the amount of datagas consumed by a transaction with the specified number

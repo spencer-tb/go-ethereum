@@ -32,7 +32,8 @@ func (e ExecutableData) MarshalJSON() ([]byte, error) {
 		BlockHash     common.Hash         `json:"blockHash"     gencodec:"required"`
 		Transactions  []hexutil.Bytes     `json:"transactions"  gencodec:"required"`
 		Withdrawals   []*types.Withdrawal `json:"withdrawals"`
-		ExcessDataGas *hexutil.Big        `json:"excessDataGas"`
+		DataGasUsed   *hexutil.Uint64     `json:"dataGasUsed"`
+		ExcessDataGas *hexutil.Uint64     `json:"excessDataGas"`
 	}
 	var enc ExecutableData
 	enc.ParentHash = e.ParentHash
@@ -55,7 +56,8 @@ func (e ExecutableData) MarshalJSON() ([]byte, error) {
 		}
 	}
 	enc.Withdrawals = e.Withdrawals
-	enc.ExcessDataGas = (*hexutil.Big)(e.ExcessDataGas)
+	enc.DataGasUsed = (*hexutil.Uint64)(e.DataGasUsed)
+	enc.ExcessDataGas = (*hexutil.Uint64)(e.ExcessDataGas)
 	return json.Marshal(&enc)
 }
 
@@ -77,7 +79,8 @@ func (e *ExecutableData) UnmarshalJSON(input []byte) error {
 		BlockHash     *common.Hash        `json:"blockHash"     gencodec:"required"`
 		Transactions  []hexutil.Bytes     `json:"transactions"  gencodec:"required"`
 		Withdrawals   []*types.Withdrawal `json:"withdrawals"`
-		ExcessDataGas *hexutil.Big        `json:"excessDataGas"`
+		DataGasUsed   *hexutil.Uint64     `json:"dataGasUsed"`
+		ExcessDataGas *hexutil.Uint64     `json:"excessDataGas"`
 	}
 	var dec ExecutableData
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -145,8 +148,11 @@ func (e *ExecutableData) UnmarshalJSON(input []byte) error {
 	if dec.Withdrawals != nil {
 		e.Withdrawals = dec.Withdrawals
 	}
+	if dec.DataGasUsed != nil {
+		e.DataGasUsed = (*uint64)(dec.DataGasUsed)
+	}
 	if dec.ExcessDataGas != nil {
-		e.ExcessDataGas = (*big.Int)(dec.ExcessDataGas)
+		e.ExcessDataGas = (*uint64)(dec.ExcessDataGas)
 	}
 	return nil
 }

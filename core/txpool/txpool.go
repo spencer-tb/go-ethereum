@@ -270,7 +270,7 @@ type TxPool struct {
 	currentState         *state.StateDB // Current state in the blockchain head
 	pendingNonces        *noncer        // Pending state tracking virtual nonces
 	currentMaxGas        uint64         // Current gas limit for transaction caps
-	currentExcessDataGas *big.Int       // Current block excess_data_gas
+	currentExcessDataGas *uint64        // Current block excess_data_gas
 
 	locals  *accountSet // Set of local transaction to exempt from eviction rules
 	journal *journal    // Journal of local transaction to back up to disk
@@ -322,7 +322,7 @@ func NewTxPool(config Config, chainconfig *params.ChainConfig, chain blockChain)
 		reorgShutdownCh:      make(chan struct{}),
 		initDoneCh:           make(chan struct{}),
 		gasPrice:             new(big.Int).SetUint64(config.PriceLimit),
-		currentExcessDataGas: new(big.Int),
+		currentExcessDataGas: new(uint64),
 	}
 	pool.locals = newAccountSet(pool.signer)
 	for _, addr := range config.Locals {
@@ -1475,7 +1475,8 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	pool.pendingNonces = newNoncer(statedb)
 	pool.currentMaxGas = newHead.GasLimit
 	if newHead.ExcessDataGas != nil {
-		pool.currentExcessDataGas.Set(newHead.ExcessDataGas)
+		edg := *newHead.ExcessDataGas
+		pool.currentExcessDataGas = &edg
 	}
 
 	// Inject any transactions discarded due to reorgs

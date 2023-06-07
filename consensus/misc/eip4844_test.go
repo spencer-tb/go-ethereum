@@ -17,7 +17,6 @@
 package misc
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -25,9 +24,9 @@ import (
 
 func TestCalcExcessDataGas(t *testing.T) {
 	var tests = []struct {
-		parentExcessDataGas int64
+		parentExcessDataGas uint64
 		newBlobs            int
-		want                int64
+		want                uint64
 	}{
 		{0, 0, 0},
 		{0, 1, 0},
@@ -40,16 +39,17 @@ func TestCalcExcessDataGas(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		parentExcessDataGas := big.NewInt(tt.parentExcessDataGas)
-		result := CalcExcessDataGas(parentExcessDataGas, tt.newBlobs)
-		if tt.want != result.Int64() {
+		dataGasUsed := uint64(tt.newBlobs * params.DataGasPerBlob)
+		result := CalcExcessDataGas(&tt.parentExcessDataGas, &dataGasUsed)
+		if tt.want != result {
 			t.Errorf("got %v want %v", result, tt.want)
 		}
 	}
 
 	// Test nil value for parentExcessDataGas
-	result := CalcExcessDataGas(nil, (params.TargetDataGasPerBlock/params.DataGasPerBlob)+1)
-	if result.Int64() != params.DataGasPerBlob {
+	dataGasUsed := uint64(params.TargetDataGasPerBlock + params.DataGasPerBlob)
+	result := CalcExcessDataGas(nil, &dataGasUsed)
+	if result != params.DataGasPerBlob {
 		t.Errorf("got %v want %v", result, params.DataGasPerBlob)
 	}
 }

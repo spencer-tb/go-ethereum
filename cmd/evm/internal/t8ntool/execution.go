@@ -57,9 +57,10 @@ type ExecutionResult struct {
 	Rejected        []*rejectedTx         `json:"rejected,omitempty"`
 	Difficulty      *math.HexOrDecimal256 `json:"currentDifficulty" gencodec:"required"`
 	GasUsed         math.HexOrDecimal64   `json:"gasUsed"`
+	DataGasUsed     *math.HexOrDecimal64  `json:"dataGasUsed"`
 	BaseFee         *math.HexOrDecimal256 `json:"currentBaseFee,omitempty"`
 	WithdrawalsRoot *common.Hash          `json:"withdrawalsRoot,omitempty"`
-	ExcessDataGas   *math.HexOrDecimal256 `json:"currentExcessDataGas,omitempty"`
+	ExcessDataGas   *math.HexOrDecimal64  `json:"currentExcessDataGas,omitempty"`
 }
 
 type ommer struct {
@@ -76,7 +77,8 @@ type stEnv struct {
 	ParentBaseFee       *big.Int                            `json:"parentBaseFee,omitempty"`
 	ParentGasUsed       uint64                              `json:"parentGasUsed,omitempty"`
 	ParentGasLimit      uint64                              `json:"parentGasLimit,omitempty"`
-	ParentExcessDataGas *big.Int                            `json:"parentExcessDataGas,omitempty"`
+	ParentDataGasUsed   *uint64                             `json:"parentDataGasUsed,omitempty"`
+	ParentExcessDataGas *uint64                             `json:"parentExcessDataGas,omitempty"`
 	GasLimit            uint64                              `json:"currentGasLimit"   gencodec:"required"`
 	Number              uint64                              `json:"currentNumber"     gencodec:"required"`
 	Timestamp           uint64                              `json:"currentTimestamp"  gencodec:"required"`
@@ -94,9 +96,10 @@ type stEnvMarshaling struct {
 	Random              *math.HexOrDecimal256
 	ParentDifficulty    *math.HexOrDecimal256
 	ParentBaseFee       *math.HexOrDecimal256
+	ParentDataGasUsed   *math.HexOrDecimal64
 	ParentGasUsed       math.HexOrDecimal64
 	ParentGasLimit      math.HexOrDecimal64
-	ParentExcessDataGas *math.HexOrDecimal256
+	ParentExcessDataGas *math.HexOrDecimal64
 	GasLimit            math.HexOrDecimal64
 	Number              math.HexOrDecimal64
 	Timestamp           math.HexOrDecimal64
@@ -162,11 +165,8 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 	}
 	// If excess data gas is defined, add it to vmContext
 	if chainConfig.IsCancun(pre.Env.Timestamp) {
-		if pre.Env.ParentExcessDataGas != nil {
-			vmContext.ExcessDataGas = pre.Env.ParentExcessDataGas
-		} else {
-			vmContext.ExcessDataGas = big.NewInt(0)
-		}
+		edg := misc.CalcExcessDataGas(pre.Env.ParentExcessDataGas, pre.Env.ParentDataGasUsed)
+		vmContext.ExcessDataGas = &edg
 	}
 	// If DAO is supported/enabled, we need to handle it here. In geth 'proper', it's
 	// done in StateProcessor.Process(block, ...), right before transactions are applied.
@@ -298,16 +298,17 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		return nil, nil, NewError(ErrorEVM, fmt.Errorf("could not commit state: %v", err))
 	}
 	execRs := &ExecutionResult{
-		StateRoot:   root,
-		TxRoot:      types.DeriveSha(includedTxs, trie.NewStackTrie(nil)),
-		ReceiptRoot: types.DeriveSha(receipts, trie.NewStackTrie(nil)),
-		Bloom:       types.CreateBloom(receipts),
-		LogsHash:    rlpHash(statedb.Logs()),
-		Receipts:    receipts,
-		Rejected:    rejectedTxs,
-		Difficulty:  (*math.HexOrDecimal256)(vmContext.Difficulty),
-		GasUsed:     (math.HexOrDecimal64)(gasUsed),
-		BaseFee:     (*math.HexOrDecimal256)(vmContext.BaseFee),
+		StateRoot:     root,
+		TxRoot:        types.DeriveSha(includedTxs, trie.NewStackTrie(nil)),
+		ReceiptRoot:   types.DeriveSha(receipts, trie.NewStackTrie(nil)),
+		Bloom:         types.CreateBloom(receipts),
+		LogsHash:      rlpHash(statedb.Logs()),
+		Receipts:      receipts,
+		Rejected:      rejectedTxs,
+		Difficulty:    (*math.HexOrDecimal256)(vmContext.Difficulty),
+		GasUsed:       (math.HexOrDecimal64)(gasUsed),
+		BaseFee:       (*math.HexOrDecimal256)(vmContext.BaseFee),
+		ExcessDataGas: (*math.HexOrDecimal64)(vmContext.ExcessDataGas),
 	}
 	if pre.Env.Withdrawals != nil {
 		h := types.DeriveSha(types.Withdrawals(pre.Env.Withdrawals), trie.NewStackTrie(nil))
@@ -321,7 +322,8 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 				newBlobs += len(tx.DataHashes())
 			}
 		}
-		execRs.ExcessDataGas = (*math.HexOrDecimal256)(misc.CalcExcessDataGas(vmContext.ExcessDataGas, newBlobs))
+		dataGasUsed := uint64(newBlobs * params.DataGasPerBlob)
+		execRs.DataGasUsed = (*math.HexOrDecimal64)(&dataGasUsed)
 	}
 	return statedb, execRs, nil
 }

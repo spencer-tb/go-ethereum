@@ -98,7 +98,7 @@ func (b *BlockGen) addTx(bc *BlockChain, vmConfig vm.Config, tx *types.Transacti
 		b.SetCoinbase(common.Address{})
 	}
 	b.statedb.SetTxContext(tx.Hash(), len(b.txs))
-	receipt, err := ApplyTransaction(b.config, bc, &b.header.Coinbase, b.gasPool, b.statedb, b.header, b.parent.Header().ExcessDataGas, tx, &b.header.GasUsed, vmConfig)
+	receipt, err := ApplyTransaction(b.config, bc, &b.header.Coinbase, b.gasPool, b.statedb, b.header, tx, &b.header.GasUsed, vmConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -161,8 +161,13 @@ func (b *BlockGen) Timestamp() uint64 {
 	return b.header.Time
 }
 
+// DataGasUsed returns the dataGasUsed of the block being generated.
+func (b *BlockGen) DataGasUsed() *uint64 {
+	return b.header.DataGasUsed
+}
+
 // ExcessDataGas returns the excessDataGas of the block being generated.
-func (b *BlockGen) ExcessDataGas() *big.Int {
+func (b *BlockGen) ExcessDataGas() *uint64 {
 	return b.header.ExcessDataGas
 }
 
@@ -390,6 +395,10 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 			parentGasLimit := parent.GasLimit() * chain.Config().ElasticityMultiplier()
 			header.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit)
 		}
+	}
+	if chain.Config().IsCancun(header.Time) {
+		edg := misc.CalcExcessDataGas(parent.ExcessDataGas(), parent.DataGasUsed())
+		header.ExcessDataGas = &edg
 	}
 	return header
 }

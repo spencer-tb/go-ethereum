@@ -35,7 +35,8 @@ func (h header) MarshalJSON() ([]byte, error) {
 		Nonce           *types.BlockNonce     `json:"nonce"`
 		BaseFee         *math.HexOrDecimal256 `json:"baseFeePerGas" rlp:"optional"`
 		WithdrawalsHash *common.Hash          `json:"withdrawalsRoot" rlp:"optional"`
-		ExcessDataGas   *math.HexOrDecimal256 `json:"excessDataGas"   rlp:"optional"`
+		DataGasUsed     *math.HexOrDecimal64  `json:"dataGasUsed"   rlp:"optional"`
+		ExcessDataGas   *math.HexOrDecimal64  `json:"excessDataGas"   rlp:"optional"`
 	}
 	var enc header
 	enc.ParentHash = h.ParentHash
@@ -55,7 +56,8 @@ func (h header) MarshalJSON() ([]byte, error) {
 	enc.Nonce = h.Nonce
 	enc.BaseFee = (*math.HexOrDecimal256)(h.BaseFee)
 	enc.WithdrawalsHash = h.WithdrawalsHash
-	enc.ExcessDataGas = (*math.HexOrDecimal256)(h.ExcessDataGas)
+	enc.DataGasUsed = (*math.HexOrDecimal64)(h.DataGasUsed)
+	enc.ExcessDataGas = (*math.HexOrDecimal64)(h.ExcessDataGas)
 	return json.Marshal(&enc)
 }
 
@@ -79,7 +81,8 @@ func (h *header) UnmarshalJSON(input []byte) error {
 		Nonce           *types.BlockNonce     `json:"nonce"`
 		BaseFee         *math.HexOrDecimal256 `json:"baseFeePerGas" rlp:"optional"`
 		WithdrawalsHash *common.Hash          `json:"withdrawalsRoot" rlp:"optional"`
-		ExcessDataGas   *math.HexOrDecimal256 `json:"excessDataGas"   rlp:"optional"`
+		DataGasUsed     *math.HexOrDecimal64  `json:"dataGasUsed"   rlp:"optional"`
+		ExcessDataGas   *math.HexOrDecimal64  `json:"excessDataGas"   rlp:"optional"`
 	}
 	var dec header
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -140,8 +143,11 @@ func (h *header) UnmarshalJSON(input []byte) error {
 	if dec.WithdrawalsHash != nil {
 		h.WithdrawalsHash = dec.WithdrawalsHash
 	}
+	if dec.DataGasUsed != nil {
+		h.DataGasUsed = (*uint64)(dec.DataGasUsed)
+	}
 	if dec.ExcessDataGas != nil {
-		h.ExcessDataGas = (*big.Int)(dec.ExcessDataGas)
+		h.ExcessDataGas = (*uint64)(dec.ExcessDataGas)
 	}
 	return nil
 }
