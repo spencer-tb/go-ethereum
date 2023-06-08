@@ -474,6 +474,7 @@ func (g *Genesis) ToBlock() *types.Block {
 			head.WithdrawalsHash = &types.EmptyRootHash
 		}
 		if g.Config.IsCancun(g.Timestamp) {
+			head.SetDataGasUsed(g.DataGasUsed)
 			head.SetExcessDataGas(g.ExcessDataGas)
 		}
 	}

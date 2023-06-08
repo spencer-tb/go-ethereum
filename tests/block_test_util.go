@@ -179,6 +179,7 @@ func (t *BlockTest) genesis(config *params.ChainConfig) *core.Genesis {
 		Coinbase:      t.json.Genesis.Coinbase,
 		Alloc:         t.json.Pre,
 		BaseFee:       t.json.Genesis.BaseFeePerGas,
+		DataGasUsed:   t.json.Genesis.DataGasUsed,
 		ExcessDataGas: t.json.Genesis.ExcessDataGas,
 	}
 }
@@ -287,6 +288,9 @@ func validateHeader(h *btHeader, h2 *types.Header) error {
 	}
 	if !reflect.DeepEqual(h.WithdrawalsRoot, h2.WithdrawalsHash) {
 		return fmt.Errorf("withdrawalsRoot: want: %v have: %v", h.WithdrawalsRoot, h2.WithdrawalsHash)
+	}
+	if !reflect.DeepEqual(h.DataGasUsed, h2.DataGasUsed) {
+		return fmt.Errorf("dataGasUsed: want: %v have: %v", h.DataGasUsed, h2.DataGasUsed)
 	}
 	if !reflect.DeepEqual(h.ExcessDataGas, h2.ExcessDataGas) {
 		return fmt.Errorf("excessDataGas: want: %v have: %v", h.ExcessDataGas, h2.ExcessDataGas)
