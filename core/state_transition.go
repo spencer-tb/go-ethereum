@@ -23,6 +23,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	cmath "github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/consensus/misc"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
@@ -230,6 +231,18 @@ func (st *StateTransition) to() common.Address {
 func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).SetUint64(st.msg.GasLimit)
 	mgval = mgval.Mul(mgval, st.msg.GasPrice)
+
+	if st.evm.ChainConfig().IsCancun(st.evm.Context.BlockNumber, st.evm.Context.Time) {
+		if dataGas := st.dataGasUsed(); dataGas > 0 {
+			if st.evm.Context.ExcessDataGas == nil {
+				panic("adsf")
+			}
+			blobFee := misc.CalcBlobFee(*st.evm.Context.ExcessDataGas)
+			blobFee.Mul(blobFee, new(big.Int).SetUint64(dataGas))
+			mgval.Add(mgval, blobFee)
+		}
+	}
+
 	balanceCheck := mgval
 	if st.msg.GasFeeCap != nil {
 		balanceCheck = new(big.Int).SetUint64(st.msg.GasLimit)
@@ -426,4 +439,9 @@ func (st *StateTransition) refundGas(refundQuotient uint64) {
 // gasUsed returns the amount of gas used up by the state transition.
 func (st *StateTransition) gasUsed() uint64 {
 	return st.initialGas - st.gasRemaining
+}
+
+// dataGasUsed returns the amount of data gas used by the message.
+func (st *StateTransition) dataGasUsed() uint64 {
+	return uint64(len(st.msg.BlobHashes) * params.BlobTxDataGasPerBlob)
 }
