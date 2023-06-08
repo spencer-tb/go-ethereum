@@ -136,6 +136,7 @@ func (i *bbInput) ToBlock() *types.Block {
 		MixDigest:       i.Header.MixDigest,
 		BaseFee:         i.Header.BaseFee,
 		WithdrawalsHash: i.Header.WithdrawalsHash,
+		DataGasUsed:     i.Header.DataGasUsed,
 		ExcessDataGas:   i.Header.ExcessDataGas,
 	}
 

@@ -88,6 +88,7 @@ type stEnv struct {
 	Withdrawals         []*types.Withdrawal                 `json:"withdrawals,omitempty"`
 	BaseFee             *big.Int                            `json:"currentBaseFee,omitempty"`
 	ParentUncleHash     common.Hash                         `json:"parentUncleHash"`
+	ExcessDataGas       *uint64                             `json:"currentExcessDataGas,omitempty"`
 }
 
 type stEnvMarshaling struct {
@@ -105,6 +106,7 @@ type stEnvMarshaling struct {
 	Timestamp           math.HexOrDecimal64
 	ParentTimestamp     math.HexOrDecimal64
 	BaseFee             *math.HexOrDecimal256
+	ExcessDataGas       *math.HexOrDecimal64
 }
 
 type rejectedTx struct {
@@ -165,8 +167,12 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 	}
 	// If excess data gas is defined, add it to vmContext
 	if chainConfig.IsCancun(pre.Env.Timestamp) {
-		edg := misc.CalcExcessDataGas(pre.Env.ParentExcessDataGas, pre.Env.ParentDataGasUsed)
-		vmContext.ExcessDataGas = &edg
+		if pre.Env.ExcessDataGas != nil {
+			vmContext.ExcessDataGas = pre.Env.ExcessDataGas
+		} else {
+			edg := misc.CalcExcessDataGas(pre.Env.ParentExcessDataGas, pre.Env.ParentDataGasUsed)
+			vmContext.ExcessDataGas = &edg
+		}
 	}
 	// If DAO is supported/enabled, we need to handle it here. In geth 'proper', it's
 	// done in StateProcessor.Process(block, ...), right before transactions are applied.
