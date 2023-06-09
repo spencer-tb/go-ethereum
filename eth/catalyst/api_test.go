@@ -1508,3 +1508,32 @@ func equalBody(a *types.Body, b *engine.ExecutionPayloadBodyV1) bool {
 	}
 	return reflect.DeepEqual(a.Withdrawals, b.Withdrawals)
 }
+
+func TestStu(t *testing.T) {
+	//  BaseFeePerGas:+58427 BlockHash: Transactions:[] Withdrawals:[] ExcessDataGas:<nil>}
+
+	data := engine.ExecutableData{
+		ParentHash:    common.HexToHash("0x89593c51afb48c957cb826b77a20c94f3ef6576c5e1fe946da3eb7025bc13da2"),
+		FeeRecipient:  common.HexToAddress("0xf97e180c050e5Ab072211Ad2C213Eb5AEE4DF134"),
+		StateRoot:     common.HexToHash("0x519a866fcf8dd8be048770ed7cdd8d26f6143c8ec1c6de23ce1d01954a2e7427"),
+		ReceiptsRoot:  common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"),
+		LogsBloom:     make([]byte, 256),
+		Random:        common.HexToHash("0xba9792347abe34810fae4429624826b8ebc9912caece7995b4e5c41a07eb504b"),
+		Number:        73,
+		GasLimit:      25000000,
+		GasUsed:       0,
+		Timestamp:     1686148344,
+		ExtraData:     []byte{78, 101, 116, 104, 101, 114, 109, 105, 110, 100},
+		BaseFeePerGas: big.NewInt(58427),
+		BlockHash:     common.HexToHash("0x298acbbf28231aaead0ebc41432ceb39e90cc9c815e5c3df7c26d3f84381bd11"),
+		ExcessDataGas: nil,
+		DataGasUsed:   nil,
+		Transactions:  make([][]byte, 0),
+		Withdrawals:   make([]*types.Withdrawal, 0),
+	}
+	block, err := engine.ExecutableDataToBlock(data, nil)
+	if err != nil {
+		panic(err)
+	}
+	_ = block
+}

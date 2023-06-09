@@ -61,6 +61,7 @@ type ExecutableData struct {
 	BlockHash     common.Hash         `json:"blockHash"     gencodec:"required"`
 	Transactions  [][]byte            `json:"transactions"  gencodec:"required"`
 	Withdrawals   []*types.Withdrawal `json:"withdrawals"`
+	DataGasUsed   *uint64             `json:"dataGasUsed"`
 	ExcessDataGas *uint64             `json:"excessDataGas"`
 }
 
@@ -74,6 +75,7 @@ type executableDataMarshaling struct {
 	ExtraData     hexutil.Bytes
 	LogsBloom     hexutil.Bytes
 	Transactions  []hexutil.Bytes
+	DataGasUsed   *hexutil.Uint64
 	ExcessDataGas *hexutil.Uint64
 }
 
@@ -215,6 +217,7 @@ func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash)
 		MixDigest:       params.Random,
 		WithdrawalsHash: withdrawalsRoot,
 		ExcessDataGas:   params.ExcessDataGas,
+		DataGasUsed:     params.DataGasUsed,
 	}
 	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */).WithWithdrawals(params.Withdrawals)
 	if block.Hash() != params.BlockHash {
