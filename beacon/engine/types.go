@@ -154,14 +154,15 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 // ExecutableDataToBlock constructs a block from executable data.
 // It verifies that the following fields:
 //
-//	len(extraData) <= 32
-//	uncleHash = emptyUncleHash
-//	difficulty = 0
+//		len(extraData) <= 32
+//		uncleHash = emptyUncleHash
+//		difficulty = 0
+//	 	if versionedHashes != nil, versionedHashes match to blob transactions
 //
 // and that the blockhash of the constructed block matches the parameters. Nil
 // Withdrawals value will propagate through the returned block. Empty
 // Withdrawals value must be passed via non-nil, length 0 value in params.
-func ExecutableDataToBlock(params ExecutableData) (*types.Block, error) {
+func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash) (*types.Block, error) {
 	txs, err := decodeTransactions(params.Transactions)
 	if err != nil {
 		return nil, err
@@ -175,6 +176,18 @@ func ExecutableDataToBlock(params ExecutableData) (*types.Block, error) {
 	// Check that baseFeePerGas is not negative or too big
 	if params.BaseFeePerGas != nil && (params.BaseFeePerGas.Sign() == -1 || params.BaseFeePerGas.BitLen() > 256) {
 		return nil, fmt.Errorf("invalid baseFeePerGas: %v", params.BaseFeePerGas)
+	}
+	var blobHashes []common.Hash
+	for _, tx := range txs {
+		blobHashes = append(blobHashes, tx.BlobHashes()...)
+	}
+	if len(blobHashes) != len(versionedHashes) {
+		return nil, fmt.Errorf("invalid number of versionedHashes: %v blobHashes: %v", versionedHashes, blobHashes)
+	}
+	for i := 0; i < len(blobHashes); i++ {
+		if blobHashes[i] != versionedHashes[i] {
+			return nil, fmt.Errorf("invalid versionedHash at %v: %v blobHashes: %v", i, versionedHashes, blobHashes)
+		}
 	}
 	// Only set withdrawalsRoot if it is non-nil. This allows CLs to use
 	// ExecutableData before withdrawals are enabled by marshaling

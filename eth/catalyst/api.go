@@ -424,7 +424,7 @@ func (api *ConsensusAPI) NewPayloadV1(params engine.ExecutableData) (engine.Payl
 	if params.Withdrawals != nil {
 		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(errors.New("withdrawals not supported in V1"))
 	}
-	return api.newPayload(params)
+	return api.newPayload(params, nil)
 }
 
 // NewPayloadV2 creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
@@ -436,11 +436,11 @@ func (api *ConsensusAPI) NewPayloadV2(params engine.ExecutableData) (engine.Payl
 	} else if params.Withdrawals != nil {
 		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(errors.New("non-nil withdrawals pre-shanghai"))
 	}
-	return api.newPayload(params)
+	return api.newPayload(params, nil)
 }
 
 // NewPayloadV3 creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
-func (api *ConsensusAPI) NewPayloadV3(params engine.ExecutableData) (engine.PayloadStatusV1, error) {
+func (api *ConsensusAPI) NewPayloadV3(params engine.ExecutableData, versionedHashes []common.Hash) (engine.PayloadStatusV1, error) {
 	if api.eth.BlockChain().Config().IsCancun(new(big.Int).SetUint64(params.Number), params.Timestamp) {
 		if params.ExcessDataGas == nil {
 			return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("nil excessDataGas post-cancun"))
@@ -448,10 +448,10 @@ func (api *ConsensusAPI) NewPayloadV3(params engine.ExecutableData) (engine.Payl
 	} else if params.ExcessDataGas != nil {
 		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("non-nil excessDataGas pre-cancun"))
 	}
-	return api.newPayload(params)
+	return api.newPayload(params, versionedHashes)
 }
 
-func (api *ConsensusAPI) newPayload(params engine.ExecutableData) (engine.PayloadStatusV1, error) {
+func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashes []common.Hash) (engine.PayloadStatusV1, error) {
 	// The locking here is, strictly, not required. Without these locks, this can happen:
 	//
 	// 1. NewPayload( execdata-N ) is invoked from the CL. It goes all the way down to
@@ -469,7 +469,7 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData) (engine.Payloa
 	defer api.newPayloadLock.Unlock()
 
 	log.Trace("Engine API request received", "method", "NewPayload", "number", params.Number, "hash", params.BlockHash)
-	block, err := engine.ExecutableDataToBlock(params)
+	block, err := engine.ExecutableDataToBlock(params, versionedHashes)
 	if err != nil {
 		log.Debug("Invalid NewPayload params", "params", params, "error", err)
 		return engine.PayloadStatusV1{Status: engine.INVALID}, nil
