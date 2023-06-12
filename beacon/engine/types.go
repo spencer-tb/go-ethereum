@@ -218,6 +218,7 @@ func ExecutableDataToBlock(params ExecutableData) (*types.Block, error) {
 		MixDigest:       params.Random,
 		WithdrawalsHash: withdrawalsRoot,
 		ExcessDataGas:   params.ExcessDataGas,
+		DataGasUsed:     params.DataGasUsed,
 	}
 	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */).WithWithdrawals(params.Withdrawals)
 	if block.Hash() != params.BlockHash {
@@ -245,8 +246,8 @@ func BlockToExecutableData(block *types.Block, fees *big.Int) *ExecutionPayloadE
 		Random:        block.MixDigest(),
 		ExtraData:     block.Extra(),
 		Withdrawals:   block.Withdrawals(),
-		ExcessDataGas: block.ExcessDataGas(),
 		DataGasUsed:   block.DataGasUsed(),
+		ExcessDataGas: block.ExcessDataGas(),
 	}
 	return &ExecutionPayloadEnvelope{ExecutionPayload: data, BlockValue: fees}
 }
