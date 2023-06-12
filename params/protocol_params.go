@@ -162,11 +162,11 @@ const (
 
 	// stuff from EIP-4844
 	FieldElementsPerBlob       = 4096 // each field element is 32 bytes
-	MaxDataGasPerBlock         = 1 << 19
+	MaxDataGasPerBlock         = 786432
+	TargetDataGasPerBlock      = 393216
 	DataGasPerBlob             = 1 << 17
-	TargetDataGasPerBlock      = 1 << 18
 	MinDataGasPrice            = 1
-	DataGasPriceUpdateFraction = 2225652
+	DataGasPriceUpdateFraction = 3338477
 	MaxBlobsPerBlock           = MaxDataGasPerBlock / DataGasPerBlob
 
 	BlobCommitmentVersionKZG uint8  = 0x01
