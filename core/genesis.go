@@ -463,6 +463,10 @@ func (g *Genesis) ToBlock() *types.Block {
 		head.WithdrawalsHash = &types.EmptyWithdrawalsHash
 		withdrawals = make([]*types.Withdrawal, 0)
 	}
+	if g.Config != nil && g.Config.IsCancun(big.NewInt(int64(g.Number)), g.Timestamp) {
+		var excessDataGas uint64
+		head.ExcessDataGas = &excessDataGas
+	}
 	return types.NewBlock(head, nil, nil, nil, trie.NewStackTrie(nil)).WithWithdrawals(withdrawals)
 }
 
