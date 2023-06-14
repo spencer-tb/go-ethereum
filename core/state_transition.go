@@ -233,14 +233,16 @@ func (st *StateTransition) buyGas() error {
 	mgval = mgval.Mul(mgval, st.msg.GasPrice)
 
 	// compute data fee for eip-4844 data blobs if any
-	dgval := new(big.Int)
+	blobsBalanceRequired, dgval := new(big.Int), new(big.Int)
 	var dataGasUsed uint64
 	if st.evm.ChainConfig().IsCancun(st.evm.Context.Time) {
 		dataGasUsed = st.dataGasUsed()
 		if st.evm.Context.ExcessDataGas == nil {
 			return fmt.Errorf("%w: cancun is active but ExcessDataGas is nil. Time: %v", ErrInternalFailure, st.evm.Context.Time)
 		}
-		dgval.Mul(types.GetDataGasPrice(st.evm.Context.ExcessDataGas), new(big.Int).SetUint64(dataGasUsed))
+		dataGasUsedBig := new(big.Int).SetUint64(dataGasUsed)
+		blobsBalanceRequired.Mul(st.msg.MaxFeePerDataGas, dataGasUsedBig)
+		dgval.Mul(types.GetDataGasPrice(st.evm.Context.ExcessDataGas), dataGasUsedBig)
 	}
 
 	// perform the required user balance checks
@@ -248,7 +250,7 @@ func (st *StateTransition) buyGas() error {
 	if st.msg.GasFeeCap == nil {
 		balanceRequired.Set(mgval)
 	} else {
-		balanceRequired.Add(st.msg.Value, dgval)
+		balanceRequired.Add(st.msg.Value, blobsBalanceRequired)
 		// EIP-1559 mandates that the sender has enough balance to cover not just actual fee but
 		// the max gas fee, so we compute this upper bound rather than use mgval here.
 		maxGasFee := new(big.Int).SetUint64(st.msg.GasLimit)
