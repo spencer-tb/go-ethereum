@@ -246,8 +246,8 @@ func BlockToExecutableData(block *types.Block, fees *big.Int) *ExecutionPayloadE
 		Random:        block.MixDigest(),
 		ExtraData:     block.Extra(),
 		Withdrawals:   block.Withdrawals(),
-		DataGasUsed:   block.DataGasUsed(),
 		ExcessDataGas: block.ExcessDataGas(),
+		DataGasUsed:   block.DataGasUsed(),
 	}
 	return &ExecutionPayloadEnvelope{ExecutionPayload: data, BlockValue: fees}
 }
