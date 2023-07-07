@@ -57,6 +57,7 @@ type ExecutionResult struct {
 	GasUsed         math.HexOrDecimal64   `json:"gasUsed"`
 	BaseFee         *math.HexOrDecimal256 `json:"currentBaseFee,omitempty"`
 	WithdrawalsRoot *common.Hash          `json:"withdrawalsRoot,omitempty"`
+	BeaconRoot      *common.Hash          `json:"beaconRoot,omitempty"`
 }
 
 type ommer struct {
@@ -82,6 +83,7 @@ type stEnv struct {
 	Withdrawals      []*types.Withdrawal                 `json:"withdrawals,omitempty"`
 	BaseFee          *big.Int                            `json:"currentBaseFee,omitempty"`
 	ParentUncleHash  common.Hash                         `json:"parentUncleHash"`
+	BeaconRoot       common.Hash                         `json:"beaconRoot,omitempty"`
 }
 
 type stEnvMarshaling struct {

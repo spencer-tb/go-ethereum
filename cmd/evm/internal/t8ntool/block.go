@@ -54,6 +54,7 @@ type header struct {
 	Nonce           *types.BlockNonce `json:"nonce"`
 	BaseFee         *big.Int          `json:"baseFeePerGas" rlp:"optional"`
 	WithdrawalsHash *common.Hash      `json:"withdrawalsRoot" rlp:"optional"`
+	BeaconRoot      *common.Hash      `json:"beaconRoot" rlp:"optional"`
 }
 
 type headerMarshaling struct {
