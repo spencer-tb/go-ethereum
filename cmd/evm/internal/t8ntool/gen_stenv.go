@@ -36,6 +36,7 @@ func (s stEnv) MarshalJSON() ([]byte, error) {
 		BaseFee             *math.HexOrDecimal256               `json:"currentBaseFee,omitempty"`
 		ParentUncleHash     common.Hash                         `json:"parentUncleHash"`
 		ExcessDataGas       *math.HexOrDecimal64                `json:"currentExcessDataGas,omitempty"`
+		BeaconRoot          *common.Hash                        `json:"beaconRoot,omitempty"`
 	}
 	var enc stEnv
 	enc.Coinbase = common.UnprefixedAddress(s.Coinbase)
@@ -57,6 +58,7 @@ func (s stEnv) MarshalJSON() ([]byte, error) {
 	enc.BaseFee = (*math.HexOrDecimal256)(s.BaseFee)
 	enc.ParentUncleHash = s.ParentUncleHash
 	enc.ExcessDataGas = (*math.HexOrDecimal64)(s.ExcessDataGas)
+	enc.BeaconRoot = s.BeaconRoot
 	return json.Marshal(&enc)
 }
 
@@ -82,6 +84,7 @@ func (s *stEnv) UnmarshalJSON(input []byte) error {
 		BaseFee             *math.HexOrDecimal256               `json:"currentBaseFee,omitempty"`
 		ParentUncleHash     *common.Hash                        `json:"parentUncleHash"`
 		ExcessDataGas       *math.HexOrDecimal64                `json:"currentExcessDataGas,omitempty"`
+		BeaconRoot          *common.Hash                        `json:"beaconRoot,omitempty"`
 	}
 	var dec stEnv
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -147,6 +150,9 @@ func (s *stEnv) UnmarshalJSON(input []byte) error {
 	}
 	if dec.ExcessDataGas != nil {
 		s.ExcessDataGas = (*uint64)(dec.ExcessDataGas)
+	}
+	if dec.BeaconRoot != nil {
+		s.BeaconRoot = dec.BeaconRoot
 	}
 	return nil
 }

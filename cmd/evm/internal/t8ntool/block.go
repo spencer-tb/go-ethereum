@@ -57,6 +57,7 @@ type header struct {
 	WithdrawalsHash *common.Hash      `json:"withdrawalsRoot" rlp:"optional"`
 	DataGasUsed     *uint64           `json:"dataGasUsed"   rlp:"optional"`
 	ExcessDataGas   *uint64           `json:"excessDataGas"   rlp:"optional"`
+	BeaconRoot      *common.Hash      `json:"beaconRoot" rlp:"optional"`
 }
 
 type headerMarshaling struct {
