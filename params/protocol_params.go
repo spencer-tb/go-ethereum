@@ -160,6 +160,10 @@ const (
 	RefundQuotient        uint64 = 2
 	RefundQuotientEIP3529 uint64 = 5
 
+	// stuff from EIP-4788
+	BeaconRootStorageAddress byte   = 0x0B
+	HistoricalRootModulus    uint64 = 98304 // Limits how many historical roots are stored by EIP-4788
+
 	// stuff from EIP-4844
 	FieldElementsPerBlob       = 4096 // each field element is 32 bytes
 	MaxBlobGasPerBlock         = 786432

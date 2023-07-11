@@ -61,6 +61,7 @@ type ExecutionResult struct {
 	BaseFee         *math.HexOrDecimal256 `json:"currentBaseFee,omitempty"`
 	WithdrawalsRoot *common.Hash          `json:"withdrawalsRoot,omitempty"`
 	ExcessBlobGas   *math.HexOrDecimal64  `json:"currentExcessBlobGas,omitempty"`
+	BeaconRoot      *common.Hash          `json:"beaconRoot,omitempty"`
 }
 
 type ommer struct {
@@ -89,6 +90,7 @@ type stEnv struct {
 	BaseFee             *big.Int                            `json:"currentBaseFee,omitempty"`
 	ParentUncleHash     common.Hash                         `json:"parentUncleHash"`
 	ExcessBlobGas       *uint64                             `json:"currentExcessBlobGas,omitempty"`
+	BeaconRoot          *common.Hash                        `json:"beaconRoot,omitempty"`
 }
 
 type stEnvMarshaling struct {
@@ -165,13 +167,16 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		rnd := common.BigToHash(pre.Env.Random)
 		vmContext.Random = &rnd
 	}
-	// If excess data gas is defined, add it to vmContext
+	// If excess data gas (or beacon root) is defined, add it to vmContext
 	if chainConfig.IsCancun(pre.Env.Timestamp) {
 		if pre.Env.ExcessBlobGas != nil {
 			vmContext.ExcessBlobGas = pre.Env.ExcessBlobGas
 		} else {
 			edg := misc.CalcExcessBlobGas(pre.Env.ParentExcessBlobGas, pre.Env.ParentBlobGasUsed)
 			vmContext.ExcessBlobGas = &edg
+		}
+		if pre.Env.BeaconRoot != nil {
+			vmContext.BeaconRoot = pre.Env.BeaconRoot
 		}
 	}
 	// If DAO is supported/enabled, we need to handle it here. In geth 'proper', it's

@@ -17,6 +17,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -70,6 +71,14 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 	// Mutate the block and state according to any hard-fork specs
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
 		misc.ApplyDAOHardFork(statedb)
+	}
+	if p.config.IsCancun(block.Time()) {
+		if header.BeaconRoot == nil {
+			return nil, nil, 0, errors.New("expected beacon root post-cancun")
+		}
+		misc.ApplyBeaconRoot(header, statedb)
+	} else if header.BeaconRoot != nil {
+		return nil, nil, 0, errors.New("beacon root set pre-cancun")
 	}
 	blockContext := NewEVMBlockContext(header, p.bc, nil)
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, p.config, cfg)

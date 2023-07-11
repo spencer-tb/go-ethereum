@@ -91,6 +91,9 @@ type Header struct {
 	BlobGasUsed   *uint64 `json:"blobGasUsed" rlp:"optional"`
 	ExcessBlobGas *uint64 `json:"excessBlobGas" rlp:"optional"`
 
+	// BeaconRoot was added by EIP-4788 and is ignored in legacy headers.
+	BeaconRoot *common.Hash `json:"beaconRoot" rlp:"optional"`
+
 	/*
 		TODO (MariusVanDerWijden) Add this field once needed
 		// Random was added during the merge and contains the BeaconState randomness
