@@ -119,7 +119,7 @@ var PrecompiledContractsCancun = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{7}):  &bn256ScalarMulIstanbul{},
 	common.BytesToAddress([]byte{8}):  &bn256PairingIstanbul{},
 	common.BytesToAddress([]byte{9}):  &blake2F{},
-	common.BytesToAddress([]byte{20}): &pointEvaluation{},
+	common.BytesToAddress([]byte{10}): &pointEvaluation{},
 	params.BeaconRootsStorageAddress:  &beaconRoot{},
 }
 
