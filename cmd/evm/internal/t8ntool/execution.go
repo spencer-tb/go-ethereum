@@ -57,10 +57,10 @@ type ExecutionResult struct {
 	Rejected        []*rejectedTx         `json:"rejected,omitempty"`
 	Difficulty      *math.HexOrDecimal256 `json:"currentDifficulty" gencodec:"required"`
 	GasUsed         math.HexOrDecimal64   `json:"gasUsed"`
-	DataGasUsed     *math.HexOrDecimal64  `json:"dataGasUsed"`
+	BlobGasUsed     *math.HexOrDecimal64  `json:"blobGasUsed"`
 	BaseFee         *math.HexOrDecimal256 `json:"currentBaseFee,omitempty"`
 	WithdrawalsRoot *common.Hash          `json:"withdrawalsRoot,omitempty"`
-	ExcessDataGas   *math.HexOrDecimal64  `json:"currentExcessDataGas,omitempty"`
+	ExcessBlobGas   *math.HexOrDecimal64  `json:"currentExcessBlobGas,omitempty"`
 }
 
 type ommer struct {
@@ -77,8 +77,8 @@ type stEnv struct {
 	ParentBaseFee       *big.Int                            `json:"parentBaseFee,omitempty"`
 	ParentGasUsed       uint64                              `json:"parentGasUsed,omitempty"`
 	ParentGasLimit      uint64                              `json:"parentGasLimit,omitempty"`
-	ParentDataGasUsed   *uint64                             `json:"parentDataGasUsed,omitempty"`
-	ParentExcessDataGas *uint64                             `json:"parentExcessDataGas,omitempty"`
+	ParentBlobGasUsed   *uint64                             `json:"parentBlobGasUsed,omitempty"`
+	ParentExcessBlobGas *uint64                             `json:"parentExcessBlobGas,omitempty"`
 	GasLimit            uint64                              `json:"currentGasLimit"   gencodec:"required"`
 	Number              uint64                              `json:"currentNumber"     gencodec:"required"`
 	Timestamp           uint64                              `json:"currentTimestamp"  gencodec:"required"`
@@ -88,7 +88,7 @@ type stEnv struct {
 	Withdrawals         []*types.Withdrawal                 `json:"withdrawals,omitempty"`
 	BaseFee             *big.Int                            `json:"currentBaseFee,omitempty"`
 	ParentUncleHash     common.Hash                         `json:"parentUncleHash"`
-	ExcessDataGas       *uint64                             `json:"currentExcessDataGas,omitempty"`
+	ExcessBlobGas       *uint64                             `json:"currentExcessBlobGas,omitempty"`
 }
 
 type stEnvMarshaling struct {
@@ -97,16 +97,16 @@ type stEnvMarshaling struct {
 	Random              *math.HexOrDecimal256
 	ParentDifficulty    *math.HexOrDecimal256
 	ParentBaseFee       *math.HexOrDecimal256
-	ParentDataGasUsed   *math.HexOrDecimal64
+	ParentBlobGasUsed   *math.HexOrDecimal64
 	ParentGasUsed       math.HexOrDecimal64
 	ParentGasLimit      math.HexOrDecimal64
-	ParentExcessDataGas *math.HexOrDecimal64
+	ParentExcessBlobGas *math.HexOrDecimal64
 	GasLimit            math.HexOrDecimal64
 	Number              math.HexOrDecimal64
 	Timestamp           math.HexOrDecimal64
 	ParentTimestamp     math.HexOrDecimal64
 	BaseFee             *math.HexOrDecimal256
-	ExcessDataGas       *math.HexOrDecimal64
+	ExcessBlobGas       *math.HexOrDecimal64
 }
 
 type rejectedTx struct {
@@ -143,9 +143,9 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		receipts    = make(types.Receipts, 0)
 		txIndex     = 0
 	)
-	// TODO(4844): Add DataGasLimit to prestate
+	// TODO(4844): Add BlobGasLimit to prestate
 	gaspool.AddGas(pre.Env.GasLimit)
-	gaspool.AddDataGas(params.MaxDataGasPerBlock)
+	gaspool.AddBlobGas(params.MaxBlobGasPerBlock)
 	vmContext := vm.BlockContext{
 		CanTransfer: core.CanTransfer,
 		Transfer:    core.Transfer,
@@ -167,11 +167,11 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 	}
 	// If excess data gas is defined, add it to vmContext
 	if chainConfig.IsCancun(pre.Env.Timestamp) {
-		if pre.Env.ExcessDataGas != nil {
-			vmContext.ExcessDataGas = pre.Env.ExcessDataGas
+		if pre.Env.ExcessBlobGas != nil {
+			vmContext.ExcessBlobGas = pre.Env.ExcessBlobGas
 		} else {
-			edg := misc.CalcExcessDataGas(pre.Env.ParentExcessDataGas, pre.Env.ParentDataGasUsed)
-			vmContext.ExcessDataGas = &edg
+			edg := misc.CalcExcessBlobGas(pre.Env.ParentExcessBlobGas, pre.Env.ParentBlobGasUsed)
+			vmContext.ExcessBlobGas = &edg
 		}
 	}
 	// If DAO is supported/enabled, we need to handle it here. In geth 'proper', it's
@@ -209,7 +209,7 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 			txContext   = core.NewEVMTxContext(msg)
 			snapshot    = statedb.Snapshot()
 			prevGas     = gaspool.Gas()
-			prevDataGas = gaspool.DataGas()
+			prevBlobGas = gaspool.BlobGas()
 		)
 		evm := vm.NewEVM(vmContext, txContext, statedb, chainConfig, vmConfig)
 
@@ -220,7 +220,7 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 			log.Info("rejected tx", "index", i, "hash", tx.Hash(), "from", msg.From, "error", err)
 			rejectedTxs = append(rejectedTxs, &rejectedTx{i, err.Error()})
 			gaspool.SetGas(prevGas)
-			gaspool.SetDataGas(prevDataGas)
+			gaspool.SetBlobGas(prevBlobGas)
 			continue
 		}
 		includedTxs = append(includedTxs, tx)
@@ -314,13 +314,13 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		Difficulty:    (*math.HexOrDecimal256)(vmContext.Difficulty),
 		GasUsed:       (math.HexOrDecimal64)(gasUsed),
 		BaseFee:       (*math.HexOrDecimal256)(vmContext.BaseFee),
-		ExcessDataGas: (*math.HexOrDecimal64)(vmContext.ExcessDataGas),
+		ExcessBlobGas: (*math.HexOrDecimal64)(vmContext.ExcessBlobGas),
 	}
 	if pre.Env.Withdrawals != nil {
 		h := types.DeriveSha(types.Withdrawals(pre.Env.Withdrawals), trie.NewStackTrie(nil))
 		execRs.WithdrawalsRoot = &h
 	}
-	if vmContext.ExcessDataGas != nil {
+	if vmContext.ExcessBlobGas != nil {
 		// calculate and set the excess data gas at the end of this block execution
 		newBlobs := 0
 		for _, tx := range txs {
@@ -328,8 +328,8 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 				newBlobs += len(tx.DataHashes())
 			}
 		}
-		dataGasUsed := uint64(newBlobs * params.DataGasPerBlob)
-		execRs.DataGasUsed = (*math.HexOrDecimal64)(&dataGasUsed)
+		blobGasUsed := uint64(newBlobs * params.BlobGasPerBlob)
+		execRs.BlobGasUsed = (*math.HexOrDecimal64)(&blobGasUsed)
 	}
 	return statedb, execRs, nil
 }

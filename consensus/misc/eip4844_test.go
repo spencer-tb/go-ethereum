@@ -22,34 +22,34 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
-func TestCalcExcessDataGas(t *testing.T) {
+func TestCalcExcessBlobGas(t *testing.T) {
 	var tests = []struct {
-		parentExcessDataGas uint64
+		parentExcessBlobGas uint64
 		newBlobs            int
 		want                uint64
 	}{
 		{0, 0, 0},
 		{0, 1, 0},
-		{0, params.TargetDataGasPerBlock / params.DataGasPerBlob, 0},
-		{0, (params.TargetDataGasPerBlock / params.DataGasPerBlob) + 1, params.DataGasPerBlob},
-		{100000, (params.TargetDataGasPerBlock / params.DataGasPerBlob) + 1, params.DataGasPerBlob + 100000},
-		{params.TargetDataGasPerBlock, 1, params.DataGasPerBlob},
-		{params.TargetDataGasPerBlock, 0, 0},
-		{params.TargetDataGasPerBlock, (params.TargetDataGasPerBlock / params.DataGasPerBlob), params.TargetDataGasPerBlock},
+		{0, params.TargetBlobGasPerBlock / params.BlobGasPerBlob, 0},
+		{0, (params.TargetBlobGasPerBlock / params.BlobGasPerBlob) + 1, params.BlobGasPerBlob},
+		{100000, (params.TargetBlobGasPerBlock / params.BlobGasPerBlob) + 1, params.BlobGasPerBlob + 100000},
+		{params.TargetBlobGasPerBlock, 1, params.BlobGasPerBlob},
+		{params.TargetBlobGasPerBlock, 0, 0},
+		{params.TargetBlobGasPerBlock, (params.TargetBlobGasPerBlock / params.BlobGasPerBlob), params.TargetBlobGasPerBlock},
 	}
 
 	for _, tt := range tests {
-		dataGasUsed := uint64(tt.newBlobs * params.DataGasPerBlob)
-		result := CalcExcessDataGas(&tt.parentExcessDataGas, &dataGasUsed)
+		blobGasUsed := uint64(tt.newBlobs * params.BlobGasPerBlob)
+		result := CalcExcessBlobGas(&tt.parentExcessBlobGas, &blobGasUsed)
 		if tt.want != result {
 			t.Errorf("got %v want %v", result, tt.want)
 		}
 	}
 
-	// Test nil value for parentExcessDataGas
-	dataGasUsed := uint64(params.TargetDataGasPerBlock + params.DataGasPerBlob)
-	result := CalcExcessDataGas(nil, &dataGasUsed)
-	if result != params.DataGasPerBlob {
-		t.Errorf("got %v want %v", result, params.DataGasPerBlob)
+	// Test nil value for parentExcessBlobGas
+	blobGasUsed := uint64(params.TargetBlobGasPerBlock + params.BlobGasPerBlob)
+	result := CalcExcessBlobGas(nil, &blobGasUsed)
+	if result != params.BlobGasPerBlob {
+		t.Errorf("got %v want %v", result, params.BlobGasPerBlob)
 	}
 }

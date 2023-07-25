@@ -4203,7 +4203,7 @@ func TestDataBlobTxs(t *testing.T) {
 			Gas:                 500000,
 			GasFeeCap:           newGwei(5),
 			GasTipCap:           big.NewInt(2),
-			MaxFeePerDataGas:    big.NewInt(params.MinDataGasPrice),
+			MaxFeePerBlobGas:    big.NewInt(params.MinBlobGasPrice),
 			BlobVersionedHashes: []common.Hash{one, two},
 		}
 		// TODO(eip-4844): Add test case for max data fee too low

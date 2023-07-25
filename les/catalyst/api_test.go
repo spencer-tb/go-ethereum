@@ -201,7 +201,7 @@ func TestShardingExecutePayloadV1(t *testing.T) {
 		MixDigest:     block.MixDigest(),
 		Nonce:         types.BlockNonce{},
 		BaseFee:       block.BaseFee(),
-		ExcessDataGas: block.ExcessDataGas(),
+		ExcessBlobGas: block.ExcessBlobGas(),
 	}, nil, nil, nil, trie.NewStackTrie(nil))
 
 	_, err := api.ExecutePayloadV1(engine.ExecutableData{
@@ -217,7 +217,7 @@ func TestShardingExecutePayloadV1(t *testing.T) {
 		Timestamp:     fakeBlock.Time(),
 		ExtraData:     fakeBlock.Extra(),
 		BaseFeePerGas: fakeBlock.BaseFee(),
-		ExcessDataGas: fakeBlock.ExcessDataGas(),
+		ExcessBlobGas: fakeBlock.ExcessBlobGas(),
 		BlockHash:     fakeBlock.Hash(),
 		Transactions:  encodeTransactions(fakeBlock.Transactions()),
 	})

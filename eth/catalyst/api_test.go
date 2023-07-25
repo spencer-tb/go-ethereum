@@ -766,7 +766,7 @@ func setBlockhash(data *engine.ExecutableData) *engine.ExecutableData {
 		GasUsed:       data.GasUsed,
 		Time:          data.Timestamp,
 		BaseFee:       data.BaseFeePerGas,
-		ExcessDataGas: data.ExcessDataGas,
+		ExcessBlobGas: data.ExcessBlobGas,
 		Extra:         data.ExtraData,
 		MixDigest:     data.Random,
 	}
@@ -1508,8 +1508,8 @@ func TestEIP4844(t *testing.T) {
 		t.Fatalf("error getting payload, err=%v", err)
 	}
 	ep := execData.ExecutionPayload
-	if ep.ExcessDataGas == nil {
-		t.Fatal("got nil ExcessDataGas")
+	if ep.ExcessBlobGas == nil {
+		t.Fatal("got nil ExcessBlobGas")
 	}
 	if len(ep.Transactions) != 0 {
 		t.Fatal("expected zero transactions")
@@ -1528,8 +1528,8 @@ func TestEIP4844(t *testing.T) {
 	}
 
 	block := ethservice.APIBackend.CurrentBlock()
-	if block.ExcessDataGas == nil {
-		t.Fatal("latest block is missing excessDataGas")
+	if block.ExcessBlobGas == nil {
+		t.Fatal("latest block is missing excessBlobGas")
 	}
 }
 
@@ -1576,8 +1576,8 @@ func TestEIP4844WithBlobTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error getting payload, err=%v", err)
 	}
-	if ep.ExcessDataGas == nil {
-		t.Fatal("got nil ExcessDataGas")
+	if ep.ExcessBlobGas == nil {
+		t.Fatal("got nil ExcessBlobGas")
 	}
 	if len(ep.Transactions) != 4 {
 		t.Fatalf("unexpected transactions. got %d", len(ep.Transactions))
@@ -1596,8 +1596,8 @@ func TestEIP4844WithBlobTransactions(t *testing.T) {
 	}
 
 	block := ethservice.APIBackend.CurrentBlock()
-	if block.ExcessDataGas == nil {
-		t.Fatal("latest block is missing excessDataGas")
+	if block.ExcessBlobGas == nil {
+		t.Fatal("latest block is missing excessBlobGas")
 	}
 }
 
@@ -1681,8 +1681,8 @@ func newRandomBlobTx(t *testing.T, chain *core.BlockChain, nonce uint64) *types.
 		Gas:       210000,
 		GasFeeCap: big.NewInt(int64(gasPrice)),
 		// fee per data gas needs to be higher than the minimum because this test produces more than one
-		// block and the latter one has non-zero excessDataGas
-		MaxFeePerDataGas:    big.NewInt(params.MinDataGasPrice * 2),
+		// block and the latter one has non-zero excessBlobGas
+		MaxFeePerBlobGas:    big.NewInt(params.MinBlobGasPrice * 2),
 		GasTipCap:           big.NewInt(int64(gasPrice)),
 		Value:               big.NewInt(1000),
 		To:                  &recipient,

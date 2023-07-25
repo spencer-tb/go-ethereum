@@ -24,7 +24,7 @@ import (
 // GasPool tracks the amount of gas available during execution of the transactions
 // in a block. The zero value is a pool with zero gas available.
 type GasPool struct {
-	gas, dataGas uint64
+	gas, blobGas uint64
 }
 
 // AddGas makes gas available for execution.
@@ -51,28 +51,28 @@ func (gp *GasPool) Gas() uint64 {
 	return gp.gas
 }
 
-// AddDataGas makes data gas available for execution.
-func (gp *GasPool) AddDataGas(amount uint64) *GasPool {
-	if gp.dataGas > math.MaxUint64-amount {
+// AddBlobGas makes data gas available for execution.
+func (gp *GasPool) AddBlobGas(amount uint64) *GasPool {
+	if gp.blobGas > math.MaxUint64-amount {
 		panic("data gas pool pushed above uint64")
 	}
-	gp.dataGas += amount
+	gp.blobGas += amount
 	return gp
 }
 
-// SubDataGas deducts the given amount from the pool if enough data gas is available and returns an
+// SubBlobGas deducts the given amount from the pool if enough data gas is available and returns an
 // error otherwise.
-func (gp *GasPool) SubDataGas(amount uint64) error {
-	if gp.dataGas < amount {
-		return ErrDataGasLimitReached
+func (gp *GasPool) SubBlobGas(amount uint64) error {
+	if gp.blobGas < amount {
+		return ErrBlobGasLimitReached
 	}
-	gp.dataGas -= amount
+	gp.blobGas -= amount
 	return nil
 }
 
-// DataGas returns the amount of data gas remaining in the pool.
-func (gp *GasPool) DataGas() uint64 {
-	return gp.dataGas
+// BlobGas returns the amount of data gas remaining in the pool.
+func (gp *GasPool) BlobGas() uint64 {
+	return gp.blobGas
 }
 
 // SetGas sets the amount of gas with the provided number.
@@ -80,11 +80,11 @@ func (gp *GasPool) SetGas(gas uint64) {
 	gp.gas = gas
 }
 
-// SetDataGas sets the amount of data gas with the provided number.
-func (gp *GasPool) SetDataGas(dataGas uint64) {
-	gp.dataGas = dataGas
+// SetBlobGas sets the amount of data gas with the provided number.
+func (gp *GasPool) SetBlobGas(blobGas uint64) {
+	gp.blobGas = blobGas
 }
 
 func (gp *GasPool) String() string {
-	return fmt.Sprintf("gas: %d, data_gas: %d", gp.gas, gp.dataGas)
+	return fmt.Sprintf("gas: %d, data_gas: %d", gp.gas, gp.blobGas)
 }

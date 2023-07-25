@@ -307,11 +307,11 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 		return err
 	}
 	if !chain.Config().IsCancun(header.Time) {
-		if header.DataGasUsed != nil {
-			return fmt.Errorf("invalid dataGasUsed before fork: have %v, expected 'nil'", header.DataGasUsed)
+		if header.BlobGasUsed != nil {
+			return fmt.Errorf("invalid blobGasUsed before fork: have %v, expected 'nil'", header.BlobGasUsed)
 		}
-		if header.ExcessDataGas != nil {
-			return fmt.Errorf("invalid excessDataGas before fork: have %v, expected 'nil'", header.ExcessDataGas)
+		if header.ExcessBlobGas != nil {
+			return fmt.Errorf("invalid excessBlobGas before fork: have %v, expected 'nil'", header.ExcessBlobGas)
 		}
 	} else if err := misc.VerifyEip4844Header(chain.Config(), parent, header); err != nil {
 		// Verify the header's EIP-4844 attributes.
@@ -607,8 +607,8 @@ func (ethash *Ethash) Prepare(chain consensus.ChainHeaderReader, header *types.H
 	}
 	header.Difficulty = ethash.CalcDifficulty(chain, header.Time, parent)
 	if chain.Config().IsCancun(header.Time) {
-		edg := misc.CalcExcessDataGas(parent.ExcessDataGas, parent.DataGasUsed)
-		header.SetExcessDataGas(&edg)
+		edg := misc.CalcExcessBlobGas(parent.ExcessBlobGas, parent.BlobGasUsed)
+		header.SetExcessBlobGas(&edg)
 	}
 	return nil
 }
@@ -620,8 +620,8 @@ func (ethash *Ethash) Finalize(chain consensus.ChainHeaderReader, header *types.
 	accumulateRewards(chain.Config(), state, header, uncles)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	if chain.Config().IsCancun(header.Time) {
-		dgu := uint64(misc.CountBlobs(txs) * params.DataGasPerBlob)
-		header.SetDataGasUsed(&dgu)
+		dgu := uint64(misc.CountBlobs(txs) * params.BlobGasPerBlob)
+		header.SetBlobGasUsed(&dgu)
 	}
 }
 
@@ -663,8 +663,8 @@ func (ethash *Ethash) SealHash(header *types.Header) (hash common.Hash) {
 	if header.WithdrawalsHash != nil {
 		panic("withdrawal hash set on ethash")
 	}
-	if header.ExcessDataGas != nil {
-		panic("excessDataGas set on ethash")
+	if header.ExcessBlobGas != nil {
+		panic("excessBlobGas set on ethash")
 	}
 	rlp.Encode(hasher, enc)
 	hasher.Sum(hash[:0])

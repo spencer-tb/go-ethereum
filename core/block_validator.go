@@ -56,7 +56,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 		return ErrKnownBlock
 	}
 
-	if err := misc.VerifyExcessDataGas(v.bc, block); err != nil {
+	if err := misc.VerifyExcessBlobGas(v.bc, block); err != nil {
 		return err
 	}
 	// Header validity is known at this point. Here we verify that uncles, transactions

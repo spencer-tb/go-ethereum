@@ -113,7 +113,7 @@ type TxData interface {
 	gasPrice() *big.Int
 	gasTipCap() *big.Int
 	gasFeeCap() *big.Int
-	maxFeePerDataGas() *big.Int
+	maxFeePerBlobGas() *big.Int
 	value() *big.Int
 	nonce() uint64
 	to() *common.Address
@@ -394,9 +394,9 @@ func (tx *Transaction) GasTipCap() *big.Int { return new(big.Int).Set(tx.inner.g
 // GasFeeCap returns the fee cap per gas of the transaction.
 func (tx *Transaction) GasFeeCap() *big.Int { return new(big.Int).Set(tx.inner.gasFeeCap()) }
 
-// MaxFeePerDataGas returns the max_fee_per_data_gas value for the transaction
-func (tx *Transaction) MaxFeePerDataGas() *big.Int {
-	return new(big.Int).Set(tx.inner.maxFeePerDataGas())
+// MaxFeePerBlobGas returns the max_fee_per_data_gas value for the transaction
+func (tx *Transaction) MaxFeePerBlobGas() *big.Int {
+	return new(big.Int).Set(tx.inner.maxFeePerBlobGas())
 }
 
 // Value returns the ether amount of the transaction.
@@ -411,24 +411,24 @@ func (tx *Transaction) To() *common.Address {
 	return copyAddressPtr(tx.inner.to())
 }
 
-// Cost returns (gas * gasPrice) + (DataGas() * maxDataFeePerGas) + value.
+// Cost returns (gas * gasPrice) + (BlobGas() * maxDataFeePerGas) + value.
 func (tx *Transaction) Cost() *big.Int {
 	total := new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(tx.Gas()))
 	total.Add(total, tx.Value())
-	dataGasFee := tx.DataGas()
-	dataGasFee.Mul(dataGasFee, tx.MaxFeePerDataGas())
-	total.Add(total, dataGasFee)
+	blobGasFee := tx.BlobGas()
+	blobGasFee.Mul(blobGasFee, tx.MaxFeePerBlobGas())
+	total.Add(total, blobGasFee)
 	return total
 }
 
-// DataGas implements get_total_data_gas from EIP-4844. While this returns a big.Int for
+// BlobGas implements get_total_data_gas from EIP-4844. While this returns a big.Int for
 // convenience, it should never exceed math.MaxUint64.
-func (tx *Transaction) DataGas() *big.Int {
+func (tx *Transaction) BlobGas() *big.Int {
 	r := new(big.Int)
 	l := int64(len(tx.DataHashes()))
 	if l != 0 {
 		r.SetInt64(l)
-		r.Mul(r, big.NewInt(params.DataGasPerBlob))
+		r.Mul(r, big.NewInt(params.BlobGasPerBlob))
 	}
 	return r
 }

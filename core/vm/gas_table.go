@@ -240,7 +240,7 @@ func makeGasLog(n uint64) gasFunc {
 		}
 
 		var memorySizeGas uint64
-		if memorySizeGas, overflow = math.SafeMul(requestedSize, params.LogDataGas); overflow {
+		if memorySizeGas, overflow = math.SafeMul(requestedSize, params.LogBlobGas); overflow {
 			return 0, ErrGasUintOverflow
 		}
 		if gas, overflow = math.SafeAdd(gas, memorySizeGas); overflow {

@@ -133,7 +133,7 @@ type Message struct {
 	GasPrice         *big.Int
 	GasFeeCap        *big.Int
 	GasTipCap        *big.Int
-	MaxFeePerDataGas *big.Int
+	MaxFeePerBlobGas *big.Int
 	Data             []byte
 	AccessList       types.AccessList
 	DataHashes       []common.Hash
@@ -152,7 +152,7 @@ func TransactionToMessage(tx *types.Transaction, s types.Signer, baseFee *big.In
 		GasPrice:          new(big.Int).Set(tx.GasPrice()),
 		GasFeeCap:         new(big.Int).Set(tx.GasFeeCap()),
 		GasTipCap:         new(big.Int).Set(tx.GasTipCap()),
-		MaxFeePerDataGas:  new(big.Int).Set(tx.MaxFeePerDataGas()),
+		MaxFeePerBlobGas:  new(big.Int).Set(tx.MaxFeePerBlobGas()),
 		To:                tx.To(),
 		Value:             tx.Value(),
 		Data:              tx.Data(),
@@ -234,15 +234,15 @@ func (st *StateTransition) buyGas() error {
 
 	// compute data fee for eip-4844 data blobs if any
 	blobsBalanceRequired, dgval := new(big.Int), new(big.Int)
-	var dataGasUsed uint64
+	var blobGasUsed uint64
 	if st.evm.ChainConfig().IsCancun(st.evm.Context.Time) {
-		dataGasUsed = st.dataGasUsed()
-		if st.evm.Context.ExcessDataGas == nil {
-			return fmt.Errorf("%w: cancun is active but ExcessDataGas is nil. Time: %v", ErrInternalFailure, st.evm.Context.Time)
+		blobGasUsed = st.blobGasUsed()
+		if st.evm.Context.ExcessBlobGas == nil {
+			return fmt.Errorf("%w: cancun is active but ExcessBlobGas is nil. Time: %v", ErrInternalFailure, st.evm.Context.Time)
 		}
-		dataGasUsedBig := new(big.Int).SetUint64(dataGasUsed)
-		blobsBalanceRequired.Mul(st.msg.MaxFeePerDataGas, dataGasUsedBig)
-		dgval.Mul(types.GetDataGasPrice(st.evm.Context.ExcessDataGas), dataGasUsedBig)
+		blobGasUsedBig := new(big.Int).SetUint64(blobGasUsed)
+		blobsBalanceRequired.Mul(st.msg.MaxFeePerBlobGas, blobGasUsedBig)
+		dgval.Mul(types.GetBlobGasPrice(st.evm.Context.ExcessBlobGas), blobGasUsedBig)
 	}
 
 	// perform the required user balance checks
@@ -266,7 +266,7 @@ func (st *StateTransition) buyGas() error {
 		return err
 	}
 	st.gasRemaining += st.msg.GasLimit
-	if err := st.gp.SubDataGas(dataGasUsed); err != nil {
+	if err := st.gp.SubBlobGas(blobGasUsed); err != nil {
 		return err
 	}
 
@@ -324,12 +324,12 @@ func (st *StateTransition) preCheck() error {
 			}
 		}
 	}
-	if st.dataGasUsed() > 0 && st.evm.ChainConfig().IsCancun(st.evm.Context.Time) {
-		dataGasPrice := types.GetDataGasPrice(st.evm.Context.ExcessDataGas)
-		if dataGasPrice.Cmp(st.msg.MaxFeePerDataGas) > 0 {
-			return fmt.Errorf("%w: address %v, maxFeePerDataGas: %v dataGasPrice: %v, excessDataGas: %v",
-				ErrMaxFeePerDataGas,
-				st.msg.From.Hex(), st.msg.MaxFeePerDataGas, dataGasPrice, st.evm.Context.ExcessDataGas)
+	if st.blobGasUsed() > 0 && st.evm.ChainConfig().IsCancun(st.evm.Context.Time) {
+		blobGasPrice := types.GetBlobGasPrice(st.evm.Context.ExcessBlobGas)
+		if blobGasPrice.Cmp(st.msg.MaxFeePerBlobGas) > 0 {
+			return fmt.Errorf("%w: address %v, maxFeePerBlobGas: %v blobGasPrice: %v, excessBlobGas: %v",
+				ErrMaxFeePerBlobGas,
+				st.msg.From.Hex(), st.msg.MaxFeePerBlobGas, blobGasPrice, st.evm.Context.ExcessBlobGas)
 		}
 	}
 	return st.buyGas()
@@ -352,7 +352,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	// 1. the nonce of the message caller is correct
 	// 2. caller has enough balance to cover:
 	//       Legacy tx: fee(gaslimit * gasprice)
-	//       EIP-1559 tx: tx.value + max-fee(gaslimit * gascap + datagas * datagasprice)
+	//       EIP-1559 tx: tx.value + max-fee(gaslimit * gascap + blobgas * blobgasprice)
 	// 3. the amount of gas required is available in the block
 	// 4. the purchased gas is enough to cover intrinsic usage
 	// 5. there is no overflow when calculating intrinsic gas
@@ -465,6 +465,6 @@ func (st *StateTransition) gasUsed() uint64 {
 	return st.msg.GasLimit - st.gasRemaining
 }
 
-func (st *StateTransition) dataGasUsed() uint64 {
-	return types.GetDataGasUsed(len(st.msg.DataHashes))
+func (st *StateTransition) blobGasUsed() uint64 {
+	return types.GetBlobGasUsed(len(st.msg.DataHashes))
 }

@@ -117,7 +117,7 @@ func dynamicFeeTx(nonce uint64, gaslimit uint64, gasFee *big.Int, tip *big.Int, 
 	return tx
 }
 
-func blobTx(nonce uint64, gaslimit uint64, gasFee uint64, tip uint64, dataGasFee uint64, numBlobs int, key *ecdsa.PrivateKey) *types.Transaction {
+func blobTx(nonce uint64, gaslimit uint64, gasFee uint64, tip uint64, blobgasFee uint64, numBlobs int, key *ecdsa.PrivateKey) *types.Transaction {
 	// Need tx wrap data that will pass blob verification
 	blobData := &types.BlobTxWrapData{
 		Blobs: make([]types.Blob, numBlobs),
@@ -140,7 +140,7 @@ func blobTx(nonce uint64, gaslimit uint64, gasFee uint64, tip uint64, dataGasFee
 		Value:               big.NewInt(100),
 		Data:                nil,
 		AccessList:          nil,
-		MaxFeePerDataGas:    big.NewInt(int64(dataGasFee)),
+		MaxFeePerBlobGas:    big.NewInt(int64(blobgasFee)),
 		BlobVersionedHashes: hashes,
 	}
 
@@ -2211,7 +2211,7 @@ func TestReplacementDynamicFee(t *testing.T) {
 	//  12. Send initial blob tx => accept
 	//  13. bump tip/fee, but don't bump data gas fee => discard
 	//  14. bump tip/fee, insufficiently bump data gas fee => discard
-	//  15. bump tip/fee/datagasfee => accept
+	//  15. bump tip/fee/blobgasfee => accept
 	//  16. Check events match expected (2 new executable txs during pending, 0 during queue)
 	stages := []string{"pending", "queued"}
 	for _, stage := range stages {
@@ -2288,17 +2288,17 @@ func TestReplacementDynamicFee(t *testing.T) {
 		if err := pool.addRemoteSync(tx); err != nil {
 			t.Fatalf("failed to add original cheap %s transaction: %v", stage, err)
 		}
-		// 13.  Bump cap & tip, but don't bump datagasfee => discard
+		// 13.  Bump cap & tip, but don't bump blobgasfee => discard
 		tx = blobTx(nonce, 100000, uint64(3), uint64(2), uint64(100), 1, key2)
 		if err := pool.AddRemote(tx); err != ErrReplaceUnderpriced {
 			t.Fatalf("original cheap %s transaction replacement error mismatch: have %v, want %v", stage, err, ErrReplaceUnderpriced)
 		}
-		// 14.  Bump cap, tip, & insufficiently bump datagasfee => discard
+		// 14.  Bump cap, tip, & insufficiently bump blobgasfee => discard
 		tx = blobTx(nonce, 100000, uint64(3), uint64(2), uint64(109), 1, key2)
 		if err := pool.AddRemote(tx); err != ErrReplaceUnderpriced {
 			t.Fatalf("original cheap %s transaction replacement error mismatch: have %v, want %v", stage, err, ErrReplaceUnderpriced)
 		}
-		// 15.  Bump cap, tip, & datagasfee => accept
+		// 15.  Bump cap, tip, & blobgasfee => accept
 		tx = blobTx(nonce, 100000, uint64(3), uint64(2), uint64(110), 1, key2)
 		if err := pool.AddRemote(tx); err != nil {
 			t.Fatalf("failed to replace cheap %s blob tx: %v", stage, err)

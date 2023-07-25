@@ -241,7 +241,7 @@ func (s dankSigner) Hash(tx *Transaction) common.Hash {
 			tx.Value(),
 			tx.Data(),
 			tx.AccessList(),
-			tx.MaxFeePerDataGas(),
+			tx.MaxFeePerBlobGas(),
 			tx.DataHashes(),
 		})
 }

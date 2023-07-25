@@ -926,7 +926,7 @@ type BlockOverrides struct {
 	Coinbase      *common.Address
 	Random        *common.Hash
 	BaseFee       *hexutil.Big
-	ExcessDataGas *hexutil.Uint64
+	ExcessBlobGas *hexutil.Uint64
 }
 
 // Apply overrides the given header fields into the given block context.
@@ -955,8 +955,8 @@ func (diff *BlockOverrides) Apply(blockCtx *vm.BlockContext) {
 	if diff.BaseFee != nil {
 		blockCtx.BaseFee = diff.BaseFee.ToInt()
 	}
-	if diff.ExcessDataGas != nil {
-		blockCtx.ExcessDataGas = (*uint64)(diff.ExcessDataGas)
+	if diff.ExcessBlobGas != nil {
+		blockCtx.ExcessBlobGas = (*uint64)(diff.ExcessBlobGas)
 	}
 }
 
@@ -999,7 +999,7 @@ func DoCall(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash 
 	}()
 
 	// Execute the message.
-	gp := new(core.GasPool).AddGas(math.MaxUint64).AddDataGas(params.MaxDataGasPerBlock)
+	gp := new(core.GasPool).AddGas(math.MaxUint64).AddBlobGas(params.MaxBlobGasPerBlock)
 	result, err := core.ApplyMessage(evm, msg, gp)
 	if err := vmError(); err != nil {
 		return nil, err
@@ -1221,11 +1221,11 @@ func RPCMarshalHeader(head *types.Header) map[string]interface{} {
 	if head.WithdrawalsHash != nil {
 		result["withdrawalsRoot"] = *head.WithdrawalsHash
 	}
-	if head.DataGasUsed != nil {
-		result["dataGasUsed"] = (*hexutil.Uint64)(head.DataGasUsed)
+	if head.BlobGasUsed != nil {
+		result["blobGasUsed"] = (*hexutil.Uint64)(head.BlobGasUsed)
 	}
-	if head.ExcessDataGas != nil {
-		result["excessDataGas"] = (*hexutil.Uint64)(head.ExcessDataGas)
+	if head.ExcessBlobGas != nil {
+		result["excessBlobGas"] = (*hexutil.Uint64)(head.ExcessBlobGas)
 	}
 
 	if head.WithdrawalsHash != nil {
@@ -1314,7 +1314,7 @@ type RPCTransaction struct {
 	Value               *hexutil.Big      `json:"value"`
 	Type                hexutil.Uint64    `json:"type"`
 	Accesses            *types.AccessList `json:"accessList,omitempty"`
-	MaxFeePerDataGas    *hexutil.Big      `json:"maxFeePerDataGas,omitempty"`
+	MaxFeePerBlobGas    *hexutil.Big      `json:"maxFeePerBlobGas,omitempty"`
 	BlobVersionedHashes []common.Hash     `json:"blobVersionedHashes,omitempty"`
 	ChainID             *hexutil.Big      `json:"chainId,omitempty"`
 	V                   *hexutil.Big      `json:"v"`
@@ -1364,7 +1364,7 @@ func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber
 		result.ChainID = (*hexutil.Big)(tx.ChainId())
 		result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
 		result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
-		result.MaxFeePerDataGas = (*hexutil.Big)(tx.MaxFeePerDataGas())
+		result.MaxFeePerBlobGas = (*hexutil.Big)(tx.MaxFeePerBlobGas())
 		// if the transaction has been mined, compute the effective gas price
 		if baseFee != nil && blockHash != (common.Hash{}) {
 			// price = min(tip, gasFeeCap - baseFee) + baseFee
@@ -1501,7 +1501,7 @@ func AccessList(ctx context.Context, b Backend, blockNrOrHash rpc.BlockNumberOrH
 		if err != nil {
 			return nil, 0, nil, err
 		}
-		res, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(msg.GasLimit).AddDataGas(params.MaxDataGasPerBlock))
+		res, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(msg.GasLimit).AddBlobGas(params.MaxBlobGasPerBlock))
 		if err != nil {
 			return nil, 0, nil, fmt.Errorf("failed to apply transaction: %v err: %v", args.toTransaction().Hash(), err)
 		}
@@ -1677,9 +1677,9 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 		"type":              hexutil.Uint(tx.Type()),
 		"effectiveGasPrice": (*hexutil.Big)(receipt.EffectiveGasPrice),
 	}
-	if receipt.DataGasUsed > 0 {
-		fields["dataGasUsed"] = hexutil.Uint64(receipt.DataGasUsed)
-		fields["dataGasPrice"] = (*hexutil.Big)(receipt.DataGasPrice)
+	if receipt.BlobGasUsed > 0 {
+		fields["blobGasUsed"] = hexutil.Uint64(receipt.BlobGasUsed)
+		fields["blobGasPrice"] = (*hexutil.Big)(receipt.BlobGasPrice)
 	}
 
 	// Assign receipt status or post state.

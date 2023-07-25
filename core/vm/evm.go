@@ -77,7 +77,7 @@ type BlockContext struct {
 	Difficulty    *big.Int       // Provides information for DIFFICULTY
 	BaseFee       *big.Int       // Provides information for BASEFEE
 	Random        *common.Hash   // Provides information for PREVRANDAO
-	ExcessDataGas *uint64        // Provides information for EIP-4844 fee calculation
+	ExcessBlobGas *uint64        // Provides information for EIP-4844 fee calculation
 }
 
 // TxContext provides the EVM with information about a transaction.
@@ -480,8 +480,8 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	// be stored due to not enough gas set an error and let it be handled
 	// by the error checking condition below.
 	if err == nil {
-		createDataGas := uint64(len(ret)) * params.CreateDataGas
-		if contract.UseGas(createDataGas) {
+		createBlobGas := uint64(len(ret)) * params.CreateBlobGas
+		if contract.UseGas(createBlobGas) {
 			evm.StateDB.SetCode(address, ret)
 		} else {
 			err = ErrCodeStoreOutOfGas

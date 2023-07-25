@@ -35,8 +35,8 @@ func (b btHeader) MarshalJSON() ([]byte, error) {
 		Timestamp        math.HexOrDecimal64
 		BaseFeePerGas    *math.HexOrDecimal256
 		WithdrawalsRoot  *common.Hash
-		DataGasUsed      *math.HexOrDecimal64
-		ExcessDataGas    *math.HexOrDecimal64
+		BlobGasUsed      *math.HexOrDecimal64
+		ExcessBlobGas    *math.HexOrDecimal64
 	}
 	var enc btHeader
 	enc.Bloom = b.Bloom
@@ -57,8 +57,8 @@ func (b btHeader) MarshalJSON() ([]byte, error) {
 	enc.Timestamp = math.HexOrDecimal64(b.Timestamp)
 	enc.BaseFeePerGas = (*math.HexOrDecimal256)(b.BaseFeePerGas)
 	enc.WithdrawalsRoot = b.WithdrawalsRoot
-	enc.DataGasUsed = (*math.HexOrDecimal64)(b.DataGasUsed)
-	enc.ExcessDataGas = (*math.HexOrDecimal64)(b.ExcessDataGas)
+	enc.BlobGasUsed = (*math.HexOrDecimal64)(b.BlobGasUsed)
+	enc.ExcessBlobGas = (*math.HexOrDecimal64)(b.ExcessBlobGas)
 	return json.Marshal(&enc)
 }
 
@@ -83,8 +83,8 @@ func (b *btHeader) UnmarshalJSON(input []byte) error {
 		Timestamp        *math.HexOrDecimal64
 		BaseFeePerGas    *math.HexOrDecimal256
 		WithdrawalsRoot  *common.Hash
-		DataGasUsed      *math.HexOrDecimal64
-		ExcessDataGas    *math.HexOrDecimal64
+		BlobGasUsed      *math.HexOrDecimal64
+		ExcessBlobGas    *math.HexOrDecimal64
 	}
 	var dec btHeader
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -144,11 +144,11 @@ func (b *btHeader) UnmarshalJSON(input []byte) error {
 	if dec.WithdrawalsRoot != nil {
 		b.WithdrawalsRoot = dec.WithdrawalsRoot
 	}
-	if dec.DataGasUsed != nil {
-		b.DataGasUsed = (*uint64)(dec.DataGasUsed)
+	if dec.BlobGasUsed != nil {
+		b.BlobGasUsed = (*uint64)(dec.BlobGasUsed)
 	}
-	if dec.ExcessDataGas != nil {
-		b.ExcessDataGas = (*uint64)(dec.ExcessDataGas)
+	if dec.ExcessBlobGas != nil {
+		b.ExcessBlobGas = (*uint64)(dec.ExcessBlobGas)
 	}
 	return nil
 }

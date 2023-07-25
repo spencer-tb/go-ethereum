@@ -37,7 +37,7 @@ type ChainContext interface {
 
 // NewEVMBlockContext creates a new context for use in the EVM.
 //
-// excessDataGas must be set to the excessDataGas value from the *parent* block header, and can be
+// excessBlobGas must be set to the excessBlobGas value from the *parent* block header, and can be
 // nil if the parent block is not of EIP-4844 type. It is read only.
 func NewEVMBlockContext(header *types.Header, chain ChainContext, author *common.Address) vm.BlockContext {
 	var (
@@ -69,7 +69,7 @@ func NewEVMBlockContext(header *types.Header, chain ChainContext, author *common
 		BaseFee:       baseFee,
 		GasLimit:      header.GasLimit,
 		Random:        random,
-		ExcessDataGas: header.ExcessDataGas,
+		ExcessBlobGas: header.ExcessBlobGas,
 	}
 }
 

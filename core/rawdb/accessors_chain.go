@@ -643,7 +643,7 @@ func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *para
 	} else {
 		baseFee = header.BaseFee
 	}
-	if err := receipts.DeriveFields(config, hash, number, header.Time, baseFee, header.ExcessDataGas, body.Transactions); err != nil {
+	if err := receipts.DeriveFields(config, hash, number, header.Time, baseFee, header.ExcessBlobGas, body.Transactions); err != nil {
 		log.Error("Failed to derive block receipts fields", "hash", hash, "number", number, "err", err)
 		return nil
 	}

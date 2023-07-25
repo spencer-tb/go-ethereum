@@ -541,7 +541,7 @@ func TestBlobTransactionEmptyLists(t *testing.T) {
 		Gas:              123457,
 		GasTipCap:        big.NewInt(42),
 		GasFeeCap:        big.NewInt(10),
-		MaxFeePerDataGas: big.NewInt(10000000),
+		MaxFeePerBlobGas: big.NewInt(10000000),
 	}
 
 	tx := NewTx(txdata)
@@ -580,7 +580,7 @@ func TestBlobTransactionMinimalCodec(t *testing.T) {
 		GasFeeCap:           big.NewInt(10),
 		AccessList:          accesses,
 		BlobVersionedHashes: []common.Hash{common.HexToHash("0x01624652859a6e98ffc1608e2af0147ca4e86e1ce27672d8d3f3c9d4ffd6ef7e")},
-		MaxFeePerDataGas:    big.NewInt(10000000),
+		MaxFeePerBlobGas:    big.NewInt(10000000),
 	}
 	tx, err := SignNewTx(key, signer, txdata)
 	if err != nil {

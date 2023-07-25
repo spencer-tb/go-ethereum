@@ -48,7 +48,7 @@ type txJSON struct {
 	AccessList *AccessList  `json:"accessList,omitempty"`
 
 	// Blob transaction fields:
-	MaxFeePerDataGas    *hexutil.Big  `json:"maxFeePerDataGas,omitempty"`
+	MaxFeePerBlobGas    *hexutil.Big  `json:"maxFeePerBlobGas,omitempty"`
 	BlobVersionedHashes []common.Hash `json:"blobVersionedHashes,omitempty"`
 	Blobs               Blobs         `json:"blobs,omitempty"`
 	BlobKzgs            BlobKzgs      `json:"blobKzgs,omitempty"`
@@ -115,7 +115,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		enc.V = (*hexutil.Big)(itx.V)
 		enc.R = (*hexutil.Big)(itx.R)
 		enc.S = (*hexutil.Big)(itx.S)
-		enc.MaxFeePerDataGas = (*hexutil.Big)(itx.MaxFeePerDataGas)
+		enc.MaxFeePerBlobGas = (*hexutil.Big)(itx.MaxFeePerBlobGas)
 		enc.BlobVersionedHashes = itx.BlobVersionedHashes
 		if tx.wrapData != nil {
 			enc.Blobs = tx.wrapData.blobs()
@@ -348,10 +348,10 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 				return err
 			}
 		}
-		if dec.MaxFeePerDataGas == nil {
-			return errors.New("missing required field 'maxFeePerDataGas' for txdata")
+		if dec.MaxFeePerBlobGas == nil {
+			return errors.New("missing required field 'maxFeePerBlobGas' for txdata")
 		}
-		itx.MaxFeePerDataGas = (*big.Int)(dec.MaxFeePerDataGas)
+		itx.MaxFeePerBlobGas = (*big.Int)(dec.MaxFeePerBlobGas)
 		if dec.BlobVersionedHashes == nil {
 			return errors.New("missing required field 'blobVersionedHashes' in transaction")
 		}

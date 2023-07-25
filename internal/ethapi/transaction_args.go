@@ -41,7 +41,7 @@ type TransactionArgs struct {
 	GasPrice             *hexutil.Big    `json:"gasPrice"`
 	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas"`
 	MaxPriorityFeePerGas *hexutil.Big    `json:"maxPriorityFeePerGas"`
-	MaxFeePerDataGas     *hexutil.Big    `json:"maxFeePerDataGas"`
+	MaxFeePerBlobGas     *hexutil.Big    `json:"maxFeePerBlobGas"`
 	Value                *hexutil.Big    `json:"value"`
 	Nonce                *hexutil.Uint64 `json:"nonce"`
 
@@ -227,7 +227,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 		gasPrice         *big.Int
 		gasFeeCap        *big.Int
 		gasTipCap        *big.Int
-		maxFeePerDataGas *big.Int
+		maxFeePerBlobGas *big.Int
 	)
 	if baseFee == nil {
 		// If there's no basefee, then it must be a non-1559 execution
@@ -258,8 +258,8 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 				gasPrice = math.BigMin(new(big.Int).Add(gasTipCap, baseFee), gasFeeCap)
 			}
 		}
-		if args.MaxFeePerDataGas != nil {
-			maxFeePerDataGas = args.MaxFeePerDataGas.ToInt()
+		if args.MaxFeePerBlobGas != nil {
+			maxFeePerBlobGas = args.MaxFeePerBlobGas.ToInt()
 		}
 	}
 	value := new(big.Int)
@@ -284,7 +284,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 		GasPrice:          gasPrice,
 		GasFeeCap:         gasFeeCap,
 		GasTipCap:         gasTipCap,
-		MaxFeePerDataGas:  maxFeePerDataGas,
+		MaxFeePerBlobGas:  maxFeePerBlobGas,
 		Data:              data,
 		AccessList:        accessList,
 		DataHashes:        fakeDataHashes,
@@ -311,7 +311,7 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 			Gas:              uint64(*args.Gas),
 			GasFeeCap:        new(big.Int).Set((*big.Int)(args.MaxFeePerGas)),
 			GasTipCap:        new(big.Int).Set((*big.Int)(args.MaxPriorityFeePerGas)),
-			MaxFeePerDataGas: new(big.Int).Set((*big.Int)(args.MaxFeePerDataGas)),
+			MaxFeePerBlobGas: new(big.Int).Set((*big.Int)(args.MaxFeePerBlobGas)),
 			Value:            new(big.Int).Set((*big.Int)(args.Value)),
 			Data:             args.data(),
 			AccessList:       al,

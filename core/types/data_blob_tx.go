@@ -17,7 +17,7 @@ type BlobTxMessage struct {
 	Value               *big.Int
 	Data                []byte
 	AccessList          AccessList
-	MaxFeePerDataGas    *big.Int // a.k.a. maxFeePerDataGas
+	MaxFeePerBlobGas    *big.Int // a.k.a. maxFeePerBlobGas
 	BlobVersionedHashes []common.Hash
 
 	// Signature values
@@ -47,7 +47,7 @@ func (tx *BlobTxMessage) copy() TxData {
 		ChainID:             new(big.Int),
 		GasTipCap:           new(big.Int),
 		GasFeeCap:           new(big.Int),
-		MaxFeePerDataGas:    new(big.Int),
+		MaxFeePerBlobGas:    new(big.Int),
 		V:                   new(big.Int),
 		R:                   new(big.Int),
 		S:                   new(big.Int),
@@ -67,8 +67,8 @@ func (tx *BlobTxMessage) copy() TxData {
 	if tx.GasFeeCap != nil {
 		cpy.GasFeeCap.Set(tx.GasFeeCap)
 	}
-	if tx.MaxFeePerDataGas != nil {
-		cpy.MaxFeePerDataGas.Set(tx.MaxFeePerDataGas)
+	if tx.MaxFeePerBlobGas != nil {
+		cpy.MaxFeePerBlobGas.Set(tx.MaxFeePerBlobGas)
 	}
 	if tx.V != nil {
 		cpy.V.Set(tx.V)
@@ -91,7 +91,7 @@ func (tx *BlobTxMessage) data() []byte               { return tx.Data }
 func (tx *BlobTxMessage) gas() uint64                { return tx.Gas }
 func (tx *BlobTxMessage) gasFeeCap() *big.Int        { return tx.GasFeeCap }
 func (tx *BlobTxMessage) gasTipCap() *big.Int        { return tx.GasTipCap }
-func (tx *BlobTxMessage) maxFeePerDataGas() *big.Int { return tx.MaxFeePerDataGas }
+func (tx *BlobTxMessage) maxFeePerBlobGas() *big.Int { return tx.MaxFeePerBlobGas }
 func (tx *BlobTxMessage) gasPrice() *big.Int         { return tx.GasFeeCap }
 func (tx *BlobTxMessage) value() *big.Int            { return tx.Value }
 func (tx *BlobTxMessage) nonce() uint64              { return tx.Nonce }
@@ -144,16 +144,16 @@ func fakeExponential(factor, num, denom *big.Int) *big.Int {
 	return output.Div(output, denom)
 }
 
-// GetDataGasPrice implements get_data_gas_price from EIP-4844
-func GetDataGasPrice(excessDataGas *uint64) *big.Int {
-	if excessDataGas == nil {
+// GetBlobGasPrice implements get_data_gas_price from EIP-4844
+func GetBlobGasPrice(excessBlobGas *uint64) *big.Int {
+	if excessBlobGas == nil {
 		return nil
 	}
-	return fakeExponential(big.NewInt(params.MinDataGasPrice), new(big.Int).SetUint64(*excessDataGas), big.NewInt(params.DataGasPriceUpdateFraction))
+	return fakeExponential(big.NewInt(params.MinBlobGasPrice), new(big.Int).SetUint64(*excessBlobGas), big.NewInt(params.BlobGasPriceUpdateFraction))
 }
 
-// GetDataGasUsed returns the amount of datagas consumed by a transaction with the specified number
+// GetBlobGasUsed returns the amount of blobgas consumed by a transaction with the specified number
 // of blobs
-func GetDataGasUsed(blobs int) uint64 {
-	return uint64(blobs) * params.DataGasPerBlob
+func GetBlobGasUsed(blobs int) uint64 {
+	return uint64(blobs) * params.BlobGasPerBlob
 }

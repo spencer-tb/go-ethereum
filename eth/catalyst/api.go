@@ -438,16 +438,16 @@ func (api *ConsensusAPI) NewPayloadV1(params engine.ExecutableData) (engine.Payl
 	if params.Withdrawals != nil {
 		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("withdrawals not supported in V1"))
 	}
-	if params.ExcessDataGas != nil {
-		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("excessDataGas not supported in V1"))
+	if params.ExcessBlobGas != nil {
+		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("excessBlobGas not supported in V1"))
 	}
 	return api.newPayload(params)
 }
 
 // NewPayloadV2 creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
 func (api *ConsensusAPI) NewPayloadV2(params engine.ExecutableData) (engine.PayloadStatusV1, error) {
-	if params.ExcessDataGas != nil {
-		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("excessDataGas not supported in V2"))
+	if params.ExcessBlobGas != nil {
+		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("excessBlobGas not supported in V2"))
 	}
 	if api.eth.BlockChain().Config().IsShanghai(params.Timestamp) {
 		if params.Withdrawals == nil {
@@ -463,11 +463,11 @@ func (api *ConsensusAPI) NewPayloadV2(params engine.ExecutableData) (engine.Payl
 // NewPayloadV3 creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
 func (api *ConsensusAPI) NewPayloadV3(params engine.ExecutableData) (engine.PayloadStatusV1, error) {
 	if api.eth.BlockChain().Config().IsCancun(params.Timestamp) {
-		if params.ExcessDataGas == nil {
-			return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("nil excessDataGas post-cancun"))
+		if params.ExcessBlobGas == nil {
+			return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("nil excessBlobGas post-cancun"))
 		}
-	} else if params.ExcessDataGas != nil {
-		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("non-nil excessDataGas pre-cancun"))
+	} else if params.ExcessBlobGas != nil {
+		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(fmt.Errorf("non-nil excessBlobGas pre-cancun"))
 	}
 
 	return api.newPayload(params)

@@ -89,8 +89,8 @@ type btHeader struct {
 	Timestamp        uint64
 	BaseFeePerGas    *big.Int
 	WithdrawalsRoot  *common.Hash
-	DataGasUsed      *uint64
-	ExcessDataGas    *uint64
+	BlobGasUsed      *uint64
+	ExcessBlobGas    *uint64
 }
 
 type btHeaderMarshaling struct {
@@ -101,8 +101,8 @@ type btHeaderMarshaling struct {
 	GasUsed       math.HexOrDecimal64
 	Timestamp     math.HexOrDecimal64
 	BaseFeePerGas *math.HexOrDecimal256
-	DataGasUsed   *math.HexOrDecimal64
-	ExcessDataGas *math.HexOrDecimal64
+	BlobGasUsed   *math.HexOrDecimal64
+	ExcessBlobGas *math.HexOrDecimal64
 }
 
 func (t *BlockTest) Run(snapshotter bool) error {
@@ -179,8 +179,8 @@ func (t *BlockTest) genesis(config *params.ChainConfig) *core.Genesis {
 		Coinbase:      t.json.Genesis.Coinbase,
 		Alloc:         t.json.Pre,
 		BaseFee:       t.json.Genesis.BaseFeePerGas,
-		DataGasUsed:   t.json.Genesis.DataGasUsed,
-		ExcessDataGas: t.json.Genesis.ExcessDataGas,
+		BlobGasUsed:   t.json.Genesis.BlobGasUsed,
+		ExcessBlobGas: t.json.Genesis.ExcessBlobGas,
 	}
 }
 
@@ -289,11 +289,11 @@ func validateHeader(h *btHeader, h2 *types.Header) error {
 	if !reflect.DeepEqual(h.WithdrawalsRoot, h2.WithdrawalsHash) {
 		return fmt.Errorf("withdrawalsRoot: want: %v have: %v", h.WithdrawalsRoot, h2.WithdrawalsHash)
 	}
-	if !reflect.DeepEqual(h.DataGasUsed, h2.DataGasUsed) {
-		return fmt.Errorf("dataGasUsed: want: %v have: %v", h.DataGasUsed, h2.DataGasUsed)
+	if !reflect.DeepEqual(h.BlobGasUsed, h2.BlobGasUsed) {
+		return fmt.Errorf("blobGasUsed: want: %v have: %v", h.BlobGasUsed, h2.BlobGasUsed)
 	}
-	if !reflect.DeepEqual(h.ExcessDataGas, h2.ExcessDataGas) {
-		return fmt.Errorf("excessDataGas: want: %v have: %v", h.ExcessDataGas, h2.ExcessDataGas)
+	if !reflect.DeepEqual(h.ExcessBlobGas, h2.ExcessBlobGas) {
+		return fmt.Errorf("excessBlobGas: want: %v have: %v", h.ExcessBlobGas, h2.ExcessBlobGas)
 	}
 	return nil
 }

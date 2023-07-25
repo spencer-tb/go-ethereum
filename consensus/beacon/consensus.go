@@ -268,25 +268,25 @@ func (beacon *Beacon) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 	if !shanghai && header.WithdrawalsHash != nil {
 		return fmt.Errorf("invalid withdrawalsHash: have %x, expected nil", header.WithdrawalsHash)
 	}
-	// Verify existence / non-existence of excessDataGas.
+	// Verify existence / non-existence of excessBlobGas.
 	cancun := chain.Config().IsCancun(header.Time)
 	if cancun {
-		if header.DataGasUsed == nil {
-			return fmt.Errorf("missing dataGasUsed")
+		if header.BlobGasUsed == nil {
+			return fmt.Errorf("missing blobGasUsed")
 		}
-		if header.ExcessDataGas == nil {
-			return fmt.Errorf("missing excessDataGas")
+		if header.ExcessBlobGas == nil {
+			return fmt.Errorf("missing excessBlobGas")
 		}
 		// Verify the header's EIP-4844 attributes.
 		if err := misc.VerifyEip4844Header(chain.Config(), parent, header); err != nil {
 			return err
 		}
 	}
-	if !cancun && header.DataGasUsed != nil {
-		return fmt.Errorf("invalid DataGasUsed: have %v, expected nil", header.DataGasUsed)
+	if !cancun && header.BlobGasUsed != nil {
+		return fmt.Errorf("invalid BlobGasUsed: have %v, expected nil", header.BlobGasUsed)
 	}
-	if !cancun && header.ExcessDataGas != nil {
-		return fmt.Errorf("invalid ExcessDataGas: have %v, expected nil", header.ExcessDataGas)
+	if !cancun && header.ExcessBlobGas != nil {
+		return fmt.Errorf("invalid ExcessBlobGas: have %v, expected nil", header.ExcessBlobGas)
 	}
 	return nil
 }
@@ -365,8 +365,8 @@ func (beacon *Beacon) Finalize(chain consensus.ChainHeaderReader, header *types.
 	// external consensus engine.
 	header.Root = state.IntermediateRoot(true)
 	if chain.Config().IsCancun(header.Time) {
-		dgu := uint64(misc.CountBlobs(txs) * params.DataGasPerBlob)
-		header.SetDataGasUsed(&dgu)
+		dgu := uint64(misc.CountBlobs(txs) * params.BlobGasPerBlob)
+		header.SetBlobGasUsed(&dgu)
 	}
 }
 

@@ -88,7 +88,7 @@ func TestEIP4844Signing(t *testing.T) {
 		To:               &addr,
 		GasTipCap:        big.NewInt(42),
 		GasFeeCap:        big.NewInt(10),
-		MaxFeePerDataGas: big.NewInt(10),
+		MaxFeePerBlobGas: big.NewInt(10),
 		Value:            big.NewInt(10),
 	}
 	var wrapData TxWrapData

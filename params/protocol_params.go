@@ -33,7 +33,7 @@ const (
 	TxGasContractCreation uint64 = 53000 // Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.
 	TxDataZeroGas         uint64 = 4     // Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
 	QuadCoeffDiv          uint64 = 512   // Divisor for the quadratic particle of the memory cost equation.
-	LogDataGas            uint64 = 8     // Per byte in a LOG* operation's data.
+	LogBlobGas            uint64 = 8     // Per byte in a LOG* operation's data.
 	CallStipend           uint64 = 2300  // Free gas given at beginning of call.
 
 	Keccak256Gas     uint64 = 30 // Once per KECCAK256 operation.
@@ -72,7 +72,7 @@ const (
 	JumpdestGas   uint64 = 1     // Once per JUMPDEST operation.
 	EpochDuration uint64 = 30000 // Duration between proof-of-work epochs.
 
-	CreateDataGas         uint64 = 200   //
+	CreateBlobGas         uint64 = 200   //
 	CallCreateDepth       uint64 = 1024  // Maximum depth of call/create stack.
 	ExpGas                uint64 = 10    // Once per EXP instruction
 	LogGas                uint64 = 375   // Per LOG* operation.
@@ -162,12 +162,12 @@ const (
 
 	// stuff from EIP-4844
 	FieldElementsPerBlob       = 4096 // each field element is 32 bytes
-	MaxDataGasPerBlock         = 786432
-	TargetDataGasPerBlock      = 393216
-	DataGasPerBlob             = 1 << 17
-	MinDataGasPrice            = 1
-	DataGasPriceUpdateFraction = 3338477
-	MaxBlobsPerBlock           = MaxDataGasPerBlock / DataGasPerBlob
+	MaxBlobGasPerBlock         = 786432
+	TargetBlobGasPerBlock      = 393216
+	BlobGasPerBlob             = 1 << 17
+	MinBlobGasPrice            = 1
+	BlobGasPriceUpdateFraction = 3338477
+	MaxBlobsPerBlock           = MaxBlobGasPerBlock / BlobGasPerBlob
 
 	BlobCommitmentVersionKZG uint8  = 0x01
 	PointEvaluationGas       uint64 = 50000

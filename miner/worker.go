@@ -881,7 +881,7 @@ func (w *worker) commitTransaction(env *environment, tx *types.Transaction) ([]*
 func (w *worker) commitTransactions(env *environment, txs *types.TransactionsByPriceAndNonce, interrupt *int32) error {
 	gasLimit := env.header.GasLimit
 	if env.gasPool == nil {
-		env.gasPool = new(core.GasPool).AddGas(gasLimit).AddDataGas(params.MaxDataGasPerBlock)
+		env.gasPool = new(core.GasPool).AddGas(gasLimit).AddBlobGas(params.MaxBlobGasPerBlock)
 	}
 	var coalescedLogs []*types.Log
 
@@ -945,7 +945,7 @@ func (w *worker) commitTransactions(env *environment, txs *types.TransactionsByP
 			log.Trace("Skipping unsupported transaction type", "sender", from, "type", tx.Type())
 			txs.Pop()
 
-		case errors.Is(err, core.ErrDataGasLimitReached):
+		case errors.Is(err, core.ErrBlobGasLimitReached):
 			// Shift, as the next tx from the account may not contain blobs
 			log.Trace("Skipping blob transaction. Reached max number of blobs in current context", "sender", from, "numBlobs", len(tx.DataHashes()))
 			txs.Shift()
@@ -1037,8 +1037,8 @@ func (w *worker) prepareWork(genParams *generateParams) (*environment, error) {
 		}
 	}
 	if w.chainConfig.IsCancun(header.Time) {
-		edg := misc.CalcExcessDataGas(parent.ExcessDataGas, parent.DataGasUsed)
-		header.ExcessDataGas = &edg
+		edg := misc.CalcExcessBlobGas(parent.ExcessBlobGas, parent.BlobGasUsed)
+		header.ExcessBlobGas = &edg
 	}
 	// Run the consensus preparation with the default or customized consensus engine.
 	if err := w.engine.Prepare(w.chain, header); err != nil {

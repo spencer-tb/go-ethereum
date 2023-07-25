@@ -307,11 +307,11 @@ func (l *list) Add(tx *types.Transaction, priceBump uint64) (bool, *types.Transa
 
 		// If the old tx consumes data gas, ensure data gas is bumped by 1.1 in the
 		// new one as recommended by EIP-4844
-		if old.MaxFeePerDataGas().Sign() == 1 {
+		if old.MaxFeePerBlobGas().Sign() == 1 {
 			mul := big.NewInt(110)
-			dataFeeMin := new(big.Int).Mul(mul, old.MaxFeePerDataGas())
+			dataFeeMin := new(big.Int).Mul(mul, old.MaxFeePerBlobGas())
 			dataFeeMin.Div(dataFeeMin, b)
-			if dataFeeMin.Cmp(tx.MaxFeePerDataGas()) == 1 {
+			if dataFeeMin.Cmp(tx.MaxFeePerBlobGas()) == 1 {
 				return false, nil
 			}
 		}

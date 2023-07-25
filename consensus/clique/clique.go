@@ -349,11 +349,11 @@ func (c *Clique) verifyCascadingFields(chain consensus.ChainHeaderReader, header
 		return err
 	}
 	if !chain.Config().IsCancun(header.Time) {
-		if header.DataGasUsed != nil {
-			return fmt.Errorf("invalid dataGasUsed before fork: have %v, want <nil>", header.DataGasUsed)
+		if header.BlobGasUsed != nil {
+			return fmt.Errorf("invalid blobGasUsed before fork: have %v, want <nil>", header.BlobGasUsed)
 		}
-		if header.ExcessDataGas != nil {
-			return fmt.Errorf("invalid excessDataGas before fork: have %v, want <nil>", header.ExcessDataGas)
+		if header.ExcessBlobGas != nil {
+			return fmt.Errorf("invalid excessBlobGas before fork: have %v, want <nil>", header.ExcessBlobGas)
 		}
 	} else if err := misc.VerifyEip4844Header(chain.Config(), parent, header); err != nil {
 		// Verify the header's EIP-4844 attributes.
@@ -574,8 +574,8 @@ func (c *Clique) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 		header.Time = uint64(time.Now().Unix())
 	}
 	if chain.Config().IsCancun(header.Time) {
-		edg := misc.CalcExcessDataGas(parent.ExcessDataGas, parent.DataGasUsed)
-		header.SetExcessDataGas(&edg)
+		edg := misc.CalcExcessBlobGas(parent.ExcessBlobGas, parent.BlobGasUsed)
+		header.SetExcessBlobGas(&edg)
 	}
 	return nil
 }
@@ -587,8 +587,8 @@ func (c *Clique) Finalize(chain consensus.ChainHeaderReader, header *types.Heade
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.UncleHash = types.CalcUncleHash(nil)
 	if chain.Config().IsCancun(header.Time) {
-		dgu := uint64(misc.CountBlobs(txs) * params.DataGasPerBlob)
-		header.SetExcessDataGas(&dgu)
+		dgu := uint64(misc.CountBlobs(txs) * params.BlobGasPerBlob)
+		header.SetExcessBlobGas(&dgu)
 	}
 }
 
@@ -772,8 +772,8 @@ func encodeSigHeader(w io.Writer, header *types.Header) {
 	if header.WithdrawalsHash != nil {
 		panic("unexpected withdrawal hash value in clique")
 	}
-	if header.ExcessDataGas != nil {
-		panic("unexpected excessDataGas value in clique")
+	if header.ExcessBlobGas != nil {
+		panic("unexpected excessBlobGas value in clique")
 	}
 	if err := rlp.Encode(w, enc); err != nil {
 		panic("can't encode: " + err.Error())

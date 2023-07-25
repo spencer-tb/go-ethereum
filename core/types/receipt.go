@@ -66,8 +66,8 @@ type Receipt struct {
 	//    https://github.com/ethereum/execution-apis/blob/af82a989bead35e2325ecc49a9023df39c548756/src/schemas/receipt.yaml#L49
 	// Changing it to required is currently breaking cmd/evm/t8n_test.go, so leaving as omitempty for now.
 	EffectiveGasPrice *big.Int `json:"effectiveGasPrice,omitempty"`
-	DataGasUsed       uint64   `json:"dataGasUsed,omitempty"`
-	DataGasPrice      *big.Int `json:"dataGasPrice,omitempty"`
+	BlobGasUsed       uint64   `json:"blobGasUsed,omitempty"`
+	BlobGasPrice      *big.Int `json:"blobGasPrice,omitempty"`
 
 	// Inclusion information: These fields provide information about the inclusion of the
 	// transaction corresponding to this receipt.
@@ -323,7 +323,7 @@ func (rs Receipts) EncodeIndex(i int, w *bytes.Buffer) {
 
 // DeriveFields fills the receipts with their computed fields based on consensus
 // data and contextual infos like containing block and transactions.
-func (rs Receipts) DeriveFields(config *params.ChainConfig, hash common.Hash, number uint64, time uint64, baseFee *big.Int, excessDataGas *uint64, txs []*Transaction) error {
+func (rs Receipts) DeriveFields(config *params.ChainConfig, hash common.Hash, number uint64, time uint64, baseFee *big.Int, excessBlobGas *uint64, txs []*Transaction) error {
 	signer := MakeSigner(config, new(big.Int).SetUint64(number), time)
 
 	if len(txs) != len(rs) {
@@ -359,8 +359,8 @@ func (rs Receipts) DeriveFields(config *params.ChainConfig, hash common.Hash, nu
 
 		// Set data gas fields for blob-containing txs
 		if len(txs[i].DataHashes()) > 0 {
-			rs[i].DataGasUsed = GetDataGasUsed(len(txs[i].DataHashes()))
-			rs[i].DataGasPrice = GetDataGasPrice(excessDataGas)
+			rs[i].BlobGasUsed = GetBlobGasUsed(len(txs[i].DataHashes()))
+			rs[i].BlobGasPrice = GetBlobGasPrice(excessBlobGas)
 		}
 	}
 	return rs.DeriveLogFields(hash, number, txs)

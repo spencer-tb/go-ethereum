@@ -267,9 +267,9 @@ func TestDeriveFields(t *testing.T) {
 			// derived fields:
 			TxHash:            txs[5].Hash(),
 			GasUsed:           6,
-			DataGasUsed:       131072,
+			BlobGasUsed:       131072,
 			EffectiveGasPrice: big.NewInt(1066),
-			DataGasPrice:      big.NewInt(1),
+			BlobGasPrice:      big.NewInt(1),
 			BlockHash:         blockHash,
 			BlockNumber:       blockNumber,
 			TransactionIndex:  5,
@@ -279,8 +279,8 @@ func TestDeriveFields(t *testing.T) {
 	// Re-derive receipts.
 	basefee := big.NewInt(1000)
 	derivedReceipts := clearComputedFieldsOnReceipts(receipts)
-	excessDataGas := new(uint64)
-	err := Receipts(derivedReceipts).DeriveFields(params.TestChainConfig, blockHash, blockNumber.Uint64(), 0, basefee, excessDataGas, txs)
+	excessBlobGas := new(uint64)
+	err := Receipts(derivedReceipts).DeriveFields(params.TestChainConfig, blockHash, blockNumber.Uint64(), 0, basefee, excessBlobGas, txs)
 	if err != nil {
 		t.Fatalf("DeriveFields(...) = %v, want <nil>", err)
 	}

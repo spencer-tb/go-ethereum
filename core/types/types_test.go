@@ -85,8 +85,8 @@ func benchRLP(b *testing.B, encode bool) {
 				Time:          555,
 				Extra:         make([]byte, 32),
 				BaseFee:       big.NewInt(10000000000),
-				DataGasUsed:   puint64(0),
-				ExcessDataGas: puint64(0),
+				BlobGasUsed:   puint64(0),
+				ExcessBlobGas: puint64(0),
 			},
 		},
 		{

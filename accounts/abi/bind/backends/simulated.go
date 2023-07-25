@@ -668,7 +668,7 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallM
 	txContext := core.NewEVMTxContext(msg)
 	evmContext := core.NewEVMBlockContext(header, b.blockchain, nil)
 	vmEnv := vm.NewEVM(evmContext, txContext, stateDB, b.config, vm.Config{NoBaseFee: true})
-	gasPool := new(core.GasPool).AddGas(math.MaxUint64).AddDataGas(params.MaxDataGasPerBlock)
+	gasPool := new(core.GasPool).AddGas(math.MaxUint64).AddBlobGas(params.MaxBlobGasPerBlock)
 
 	return core.ApplyMessage(vmEnv, msg, gasPool)
 }

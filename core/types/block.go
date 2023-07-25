@@ -88,8 +88,8 @@ type Header struct {
 	WithdrawalsHash *common.Hash `json:"withdrawalsRoot" rlp:"optional"`
 
 	// Data gas fields are added by EIP-4844 and is ignored in legacy headers.
-	DataGasUsed   *uint64 `json:"dataGasUsed" rlp:"optional"`
-	ExcessDataGas *uint64 `json:"excessDataGas" rlp:"optional"`
+	BlobGasUsed   *uint64 `json:"blobGasUsed" rlp:"optional"`
+	ExcessBlobGas *uint64 `json:"excessBlobGas" rlp:"optional"`
 
 	/*
 		TODO (MariusVanDerWijden) Add this field once needed
@@ -107,8 +107,8 @@ type headerMarshaling struct {
 	Time          hexutil.Uint64
 	Extra         hexutil.Bytes
 	BaseFee       *hexutil.Big
-	DataGasUsed   *hexutil.Uint64
-	ExcessDataGas *hexutil.Uint64
+	BlobGasUsed   *hexutil.Uint64
+	ExcessBlobGas *hexutil.Uint64
 	Hash          common.Hash `json:"hash"` // adds call to Hash() in MarshalJSON
 }
 
@@ -117,11 +117,11 @@ func (h *Header) TimeBig() *big.Int {
 	return new(big.Int).SetUint64(h.Time)
 }
 
-// SetExcessDataGas sets the excess_data_gas field in the header
-func (h *Header) SetExcessDataGas(v *uint64) {
+// SetExcessBlobGas sets the excess_data_gas field in the header
+func (h *Header) SetExcessBlobGas(v *uint64) {
 	if v != nil {
 		edg := *v
-		h.ExcessDataGas = &edg
+		h.ExcessBlobGas = &edg
 	}
 	if h.WithdrawalsHash == nil {
 		// leaving this nil would result in a buggy encoding
@@ -129,11 +129,11 @@ func (h *Header) SetExcessDataGas(v *uint64) {
 	}
 }
 
-// SetExcessDataGas sets the excess_data_gas field in the header
-func (h *Header) SetDataGasUsed(v *uint64) {
+// SetExcessBlobGas sets the excess_data_gas field in the header
+func (h *Header) SetBlobGasUsed(v *uint64) {
 	if v != nil {
 		dgu := *v
-		h.DataGasUsed = &dgu
+		h.BlobGasUsed = &dgu
 	}
 	if h.WithdrawalsHash == nil {
 		// leaving this nil would result in a buggy encoding
@@ -156,10 +156,10 @@ func (h *Header) Size() common.StorageSize {
 	if h.BaseFee != nil {
 		feeBits = h.BaseFee.BitLen()
 	}
-	if h.ExcessDataGas != nil {
+	if h.ExcessBlobGas != nil {
 		feeBits += 64
 	}
-	if h.DataGasUsed != nil {
+	if h.BlobGasUsed != nil {
 		feeBits += 64
 	}
 	var withdrawalBytes int
@@ -395,8 +395,8 @@ func CopyHeader(h *Header) *Header {
 	if h.BaseFee != nil {
 		cpy.BaseFee = new(big.Int).Set(h.BaseFee)
 	}
-	if h.ExcessDataGas != nil {
-		cpy.SetExcessDataGas(h.ExcessDataGas)
+	if h.ExcessBlobGas != nil {
+		cpy.SetExcessBlobGas(h.ExcessBlobGas)
 	}
 	if len(h.Extra) > 0 {
 		cpy.Extra = make([]byte, len(h.Extra))
@@ -428,11 +428,11 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 
 // EncodeRLP serializes b into the Ethereum RLP block format.
 func (b *Block) EncodeRLP(w io.Writer) error {
-	if b.header.ExcessDataGas != nil && b.header.WithdrawalsHash == nil {
+	if b.header.ExcessBlobGas != nil && b.header.WithdrawalsHash == nil {
 		// This situation should not arise, but if it does (due to a bug) you'd silently produce an
 		// encoding that would fail to decode. ref:
 		// https://github.com/ethereum/go-ethereum/pull/26077
-		return errors.New("nil WithdrawalsHash in header with non-nil ExcessDataGas")
+		return errors.New("nil WithdrawalsHash in header with non-nil ExcessBlobGas")
 	}
 	return rlp.Encode(w, extblock{
 		Header:      b.header,
@@ -485,19 +485,19 @@ func (b *Block) Withdrawals() Withdrawals {
 	return b.withdrawals
 }
 
-func (b *Block) ExcessDataGas() *uint64 {
-	if b.header.ExcessDataGas == nil {
+func (b *Block) ExcessBlobGas() *uint64 {
+	if b.header.ExcessBlobGas == nil {
 		return nil
 	}
-	v := *b.header.ExcessDataGas
+	v := *b.header.ExcessBlobGas
 	return &v
 }
 
-func (b *Block) DataGasUsed() *uint64 {
-	if b.header.DataGasUsed == nil {
+func (b *Block) BlobGasUsed() *uint64 {
+	if b.header.BlobGasUsed == nil {
 		return nil
 	}
-	v := *b.header.DataGasUsed
+	v := *b.header.BlobGasUsed
 	return &v
 }
 

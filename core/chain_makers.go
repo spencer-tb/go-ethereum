@@ -61,7 +61,7 @@ func (b *BlockGen) SetCoinbase(addr common.Address) {
 		panic("coinbase can only be set once")
 	}
 	b.header.Coinbase = addr
-	b.gasPool = new(GasPool).AddGas(b.header.GasLimit).AddDataGas(params.MaxDataGasPerBlock)
+	b.gasPool = new(GasPool).AddGas(b.header.GasLimit).AddBlobGas(params.MaxBlobGasPerBlock)
 }
 
 // SetExtra sets the extra data field of the generated block.
@@ -161,14 +161,14 @@ func (b *BlockGen) Timestamp() uint64 {
 	return b.header.Time
 }
 
-// DataGasUsed returns the dataGasUsed of the block being generated.
-func (b *BlockGen) DataGasUsed() *uint64 {
-	return b.header.DataGasUsed
+// BlobGasUsed returns the blobGasUsed of the block being generated.
+func (b *BlockGen) BlobGasUsed() *uint64 {
+	return b.header.BlobGasUsed
 }
 
-// ExcessDataGas returns the excessDataGas of the block being generated.
-func (b *BlockGen) ExcessDataGas() *uint64 {
-	return b.header.ExcessDataGas
+// ExcessBlobGas returns the excessBlobGas of the block being generated.
+func (b *BlockGen) ExcessBlobGas() *uint64 {
+	return b.header.ExcessBlobGas
 }
 
 // BaseFee returns the EIP-1559 base fee of the block being generated.
@@ -397,8 +397,8 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 		}
 	}
 	if chain.Config().IsCancun(header.Time) {
-		edg := misc.CalcExcessDataGas(parent.ExcessDataGas(), parent.DataGasUsed())
-		header.ExcessDataGas = &edg
+		edg := misc.CalcExcessBlobGas(parent.ExcessBlobGas(), parent.BlobGasUsed())
+		header.ExcessBlobGas = &edg
 	}
 	return header
 }

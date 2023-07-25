@@ -24,22 +24,22 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
-// CalcExcessDataGas implements calc_excess_data_gas from EIP-4844
-func CalcExcessDataGas(parentExcessDataGas *uint64, parentDataGasUsed *uint64) uint64 {
+// CalcExcessBlobGas implements calc_excess_data_gas from EIP-4844
+func CalcExcessBlobGas(parentExcessBlobGas *uint64, parentBlobGasUsed *uint64) uint64 {
 	var (
 		pEdg = uint64(0)
 		pDgu = uint64(0)
 	)
-	if parentExcessDataGas != nil {
-		pEdg = *parentExcessDataGas
+	if parentExcessBlobGas != nil {
+		pEdg = *parentExcessBlobGas
 	}
-	if parentDataGasUsed != nil {
-		pDgu = *parentDataGasUsed
+	if parentBlobGasUsed != nil {
+		pDgu = *parentBlobGasUsed
 	}
-	if pEdg+pDgu < params.TargetDataGasPerBlock {
+	if pEdg+pDgu < params.TargetBlobGasPerBlock {
 		return 0
 	}
-	return pEdg + pDgu - params.TargetDataGasPerBlock
+	return pEdg + pDgu - params.TargetBlobGasPerBlock
 }
 
 // CountBlobs returns the number of blob transactions in txs
@@ -51,42 +51,42 @@ func CountBlobs(txs []*types.Transaction) int {
 	return count
 }
 
-// VerifyEip4844Header verifies that the header is not malformed but does *not* check the value of excessDataGas.
-// See VerifyExcessDataGas for the full check.
+// VerifyEip4844Header verifies that the header is not malformed but does *not* check the value of excessBlobGas.
+// See VerifyExcessBlobGas for the full check.
 func VerifyEip4844Header(config *params.ChainConfig, parent, header *types.Header) error {
-	if header.ExcessDataGas == nil {
-		return fmt.Errorf("header is missing excessDataGas")
+	if header.ExcessBlobGas == nil {
+		return fmt.Errorf("header is missing excessBlobGas")
 	}
-	if header.DataGasUsed == nil {
-		return fmt.Errorf("header is missing dataGasUsed")
+	if header.BlobGasUsed == nil {
+		return fmt.Errorf("header is missing blobGasUsed")
 	}
 	var (
-		excessDataGas = *header.ExcessDataGas
+		excessBlobGas = *header.ExcessBlobGas
 	)
-	if excessDataGas != CalcExcessDataGas(parent.ExcessDataGas, parent.DataGasUsed) {
-		return fmt.Errorf("invalid excessDataGas: have %d want %d", excessDataGas, CalcExcessDataGas(parent.ExcessDataGas, parent.DataGasUsed))
+	if excessBlobGas != CalcExcessBlobGas(parent.ExcessBlobGas, parent.BlobGasUsed) {
+		return fmt.Errorf("invalid excessBlobGas: have %d want %d", excessBlobGas, CalcExcessBlobGas(parent.ExcessBlobGas, parent.BlobGasUsed))
 	}
 	return nil
 }
 
-// VerifyExcessDataGas verifies the excess_data_gas in the block header
-func VerifyExcessDataGas(chainReader ChainReader, block *types.Block) error {
-	excessDataGas := block.ExcessDataGas()
-	dataGasUsed := block.DataGasUsed()
+// VerifyExcessBlobGas verifies the excess_data_gas in the block header
+func VerifyExcessBlobGas(chainReader ChainReader, block *types.Block) error {
+	excessBlobGas := block.ExcessBlobGas()
+	blobGasUsed := block.BlobGasUsed()
 	if !chainReader.Config().IsCancun(block.Time()) {
-		if excessDataGas != nil {
-			return fmt.Errorf("unexpected excessDataGas in header")
+		if excessBlobGas != nil {
+			return fmt.Errorf("unexpected excessBlobGas in header")
 		}
-		if dataGasUsed != nil {
-			return fmt.Errorf("unexpected dataGasUsed in header")
+		if blobGasUsed != nil {
+			return fmt.Errorf("unexpected blobGasUsed in header")
 		}
 		return nil
 	}
-	if excessDataGas == nil {
-		return fmt.Errorf("header is missing excessDataGas")
+	if excessBlobGas == nil {
+		return fmt.Errorf("header is missing excessBlobGas")
 	}
-	if dataGasUsed == nil {
-		return fmt.Errorf("header is missing dataGasUsed")
+	if blobGasUsed == nil {
+		return fmt.Errorf("header is missing blobGasUsed")
 	}
 
 	number, parent := block.NumberU64()-1, block.ParentHash()
@@ -94,9 +94,9 @@ func VerifyExcessDataGas(chainReader ChainReader, block *types.Block) error {
 	if parentBlock == nil {
 		return fmt.Errorf("parent block not found")
 	}
-	expectedEDG := CalcExcessDataGas(parentBlock.ExcessDataGas(), parentBlock.DataGasUsed())
-	if *excessDataGas != expectedEDG {
-		return fmt.Errorf("invalid excessDataGas: have %d want %d", *excessDataGas, expectedEDG)
+	expectedEDG := CalcExcessBlobGas(parentBlock.ExcessBlobGas(), parentBlock.BlobGasUsed())
+	if *excessBlobGas != expectedEDG {
+		return fmt.Errorf("invalid excessBlobGas: have %d want %d", *excessBlobGas, expectedEDG)
 	}
 	return nil
 }
