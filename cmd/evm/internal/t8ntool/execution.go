@@ -177,6 +177,10 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		}
 		if pre.Env.BeaconRoot != nil {
 			vmContext.BeaconRoot = pre.Env.BeaconRoot
+			misc.ApplyBeaconRoot(&types.Header{
+				Time:       vmContext.Time,
+				BeaconRoot: vmContext.BeaconRoot,
+			}, statedb)
 		}
 	}
 	// If DAO is supported/enabled, we need to handle it here. In geth 'proper', it's
