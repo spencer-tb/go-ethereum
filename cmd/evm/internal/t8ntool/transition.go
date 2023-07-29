@@ -240,7 +240,7 @@ func Transition(ctx *cli.Context) error {
 		}
 	}
 	// We may have to sign the transactions.
-	signer := types.MakeSigner(chainConfig, big.NewInt(int64(prestate.Env.Number)), prestate.Env.Timestamp)
+	signer := types.LatestSignerForChainID(chainConfig.ChainID)
 
 	if txs, err = signUnsignedTransactions(txsWithKeys, signer); err != nil {
 		return NewError(ErrorJson, fmt.Errorf("failed signing transactions: %v", err))
@@ -263,6 +263,11 @@ func Transition(ctx *cli.Context) error {
 	}
 	if chainConfig.IsShanghai(big.NewInt(int64(prestate.Env.Number)), prestate.Env.Timestamp) && prestate.Env.Withdrawals == nil {
 		return NewError(ErrorConfig, errors.New("Shanghai config but missing 'withdrawals' in env section"))
+	}
+	if chainConfig.IsCancun(big.NewInt(int64(prestate.Env.Number)), prestate.Env.Timestamp) {
+		if prestate.Env.BeaconRoot == nil {
+			return NewError(ErrorConfig, errors.New("Cancun config but missing 'beaconRoot' in env section"))
+		}
 	}
 	isMerged := chainConfig.TerminalTotalDifficulty != nil && chainConfig.TerminalTotalDifficulty.BitLen() == 0
 	env := prestate.Env

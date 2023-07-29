@@ -19,11 +19,13 @@ package t8ntool
 import (
 	"fmt"
 	"math/big"
+	"os"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/consensus/misc"
+	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -55,8 +57,10 @@ type ExecutionResult struct {
 	Rejected        []*rejectedTx         `json:"rejected,omitempty"`
 	Difficulty      *math.HexOrDecimal256 `json:"currentDifficulty" gencodec:"required"`
 	GasUsed         math.HexOrDecimal64   `json:"gasUsed"`
+	BlobGasUsed     *math.HexOrDecimal64  `json:"blobGasUsed"`
 	BaseFee         *math.HexOrDecimal256 `json:"currentBaseFee,omitempty"`
 	WithdrawalsRoot *common.Hash          `json:"withdrawalsRoot,omitempty"`
+	ExcessBlobGas   *math.HexOrDecimal64  `json:"currentExcessBlobGas,omitempty"`
 }
 
 type ommer struct {
@@ -66,37 +70,44 @@ type ommer struct {
 
 //go:generate go run github.com/fjl/gencodec -type stEnv -field-override stEnvMarshaling -out gen_stenv.go
 type stEnv struct {
-	Coinbase         common.Address                      `json:"currentCoinbase"   gencodec:"required"`
-	Difficulty       *big.Int                            `json:"currentDifficulty"`
-	Random           *big.Int                            `json:"currentRandom"`
-	ParentDifficulty *big.Int                            `json:"parentDifficulty"`
-	ParentBaseFee    *big.Int                            `json:"parentBaseFee,omitempty"`
-	ParentGasUsed    uint64                              `json:"parentGasUsed,omitempty"`
-	ParentGasLimit   uint64                              `json:"parentGasLimit,omitempty"`
-	GasLimit         uint64                              `json:"currentGasLimit"   gencodec:"required"`
-	Number           uint64                              `json:"currentNumber"     gencodec:"required"`
-	Timestamp        uint64                              `json:"currentTimestamp"  gencodec:"required"`
-	ParentTimestamp  uint64                              `json:"parentTimestamp,omitempty"`
-	BlockHashes      map[math.HexOrDecimal64]common.Hash `json:"blockHashes,omitempty"`
-	Ommers           []ommer                             `json:"ommers,omitempty"`
-	Withdrawals      []*types.Withdrawal                 `json:"withdrawals,omitempty"`
-	BaseFee          *big.Int                            `json:"currentBaseFee,omitempty"`
-	ParentUncleHash  common.Hash                         `json:"parentUncleHash"`
+	Coinbase            common.Address                      `json:"currentCoinbase"   gencodec:"required"`
+	Difficulty          *big.Int                            `json:"currentDifficulty"`
+	Random              *big.Int                            `json:"currentRandom"`
+	ParentDifficulty    *big.Int                            `json:"parentDifficulty"`
+	ParentBaseFee       *big.Int                            `json:"parentBaseFee,omitempty"`
+	ParentGasUsed       uint64                              `json:"parentGasUsed,omitempty"`
+	ParentGasLimit      uint64                              `json:"parentGasLimit,omitempty"`
+	ParentBlobGasUsed   *uint64                             `json:"parentBlobGasUsed,omitempty"`
+	ParentExcessBlobGas *uint64                             `json:"parentExcessBlobGas,omitempty"`
+	GasLimit            uint64                              `json:"currentGasLimit"   gencodec:"required"`
+	Number              uint64                              `json:"currentNumber"     gencodec:"required"`
+	Timestamp           uint64                              `json:"currentTimestamp"  gencodec:"required"`
+	ParentTimestamp     uint64                              `json:"parentTimestamp,omitempty"`
+	BlockHashes         map[math.HexOrDecimal64]common.Hash `json:"blockHashes,omitempty"`
+	Ommers              []ommer                             `json:"ommers,omitempty"`
+	Withdrawals         []*types.Withdrawal                 `json:"withdrawals,omitempty"`
+	BaseFee             *big.Int                            `json:"currentBaseFee,omitempty"`
+	ParentUncleHash     common.Hash                         `json:"parentUncleHash"`
+	ExcessBlobGas       *uint64                             `json:"currentExcessBlobGas,omitempty"`
+	BeaconRoot          *common.Hash                        `json:"beaconRoot,omitempty"`
 }
 
 type stEnvMarshaling struct {
-	Coinbase         common.UnprefixedAddress
-	Difficulty       *math.HexOrDecimal256
-	Random           *math.HexOrDecimal256
-	ParentDifficulty *math.HexOrDecimal256
-	ParentBaseFee    *math.HexOrDecimal256
-	ParentGasUsed    math.HexOrDecimal64
-	ParentGasLimit   math.HexOrDecimal64
-	GasLimit         math.HexOrDecimal64
-	Number           math.HexOrDecimal64
-	Timestamp        math.HexOrDecimal64
-	ParentTimestamp  math.HexOrDecimal64
-	BaseFee          *math.HexOrDecimal256
+	Coinbase            common.UnprefixedAddress
+	Difficulty          *math.HexOrDecimal256
+	Random              *math.HexOrDecimal256
+	ParentDifficulty    *math.HexOrDecimal256
+	ParentBaseFee       *math.HexOrDecimal256
+	ParentBlobGasUsed   *math.HexOrDecimal64
+	ParentGasUsed       math.HexOrDecimal64
+	ParentGasLimit      math.HexOrDecimal64
+	ParentExcessBlobGas *math.HexOrDecimal64
+	GasLimit            math.HexOrDecimal64
+	Number              math.HexOrDecimal64
+	Timestamp           math.HexOrDecimal64
+	ParentTimestamp     math.HexOrDecimal64
+	BaseFee             *math.HexOrDecimal256
+	ExcessBlobGas       *math.HexOrDecimal64
 }
 
 type rejectedTx struct {
@@ -123,15 +134,17 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		return h
 	}
 	var (
-		statedb     = MakePreState(rawdb.NewMemoryDatabase(), pre.Pre)
-		signer      = types.MakeSigner(chainConfig, new(big.Int).SetUint64(pre.Env.Number), pre.Env.Timestamp)
-		gaspool     = new(core.GasPool)
-		blockHash   = common.Hash{0x13, 0x37}
-		rejectedTxs []*rejectedTx
-		includedTxs types.Transactions
-		gasUsed     = uint64(0)
-		receipts    = make(types.Receipts, 0)
-		txIndex     = 0
+		statedb            = MakePreState(rawdb.NewMemoryDatabase(), pre.Pre)
+		signer             = types.MakeSigner(chainConfig, new(big.Int).SetUint64(pre.Env.Number), pre.Env.Timestamp)
+		gaspool            = new(core.GasPool)
+		blockHash          = common.Hash{0x13, 0x37}
+		rejectedTxs        []*rejectedTx
+		includedTxs        types.Transactions
+		gasUsed            = uint64(0)
+		receipts           = make(types.Receipts, 0)
+		txIndex            = 0
+		blockBlobGasUsed   = 0
+		maxBlobGasPerBlock = 0
 	)
 	gaspool.AddGas(pre.Env.GasLimit)
 	vmContext := vm.BlockContext{
@@ -153,6 +166,34 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		rnd := common.BigToHash(pre.Env.Random)
 		vmContext.Random = &rnd
 	}
+	// If excess data gas (or beacon root) is defined, add it to vmContext
+	if chainConfig.IsCancun(new(big.Int).SetUint64(pre.Env.Number), pre.Env.Timestamp) {
+		if pre.Env.ExcessBlobGas != nil {
+			vmContext.ExcessBlobGas = pre.Env.ExcessBlobGas
+		} else {
+			var (
+				pebg uint64 = 0
+				pbgu uint64 = 0
+			)
+			if pre.Env.ParentExcessBlobGas != nil {
+				pebg = *pre.Env.ParentExcessBlobGas
+			}
+			if pre.Env.ParentBlobGasUsed != nil {
+				pbgu = *pre.Env.ParentBlobGasUsed
+			}
+			ebg := eip4844.CalcExcessBlobGas(pebg, pbgu)
+			vmContext.ExcessBlobGas = &ebg
+		}
+		maxBlobGasPerBlock = params.BlobTxMaxBlobGasPerBlock
+		if pre.Env.BeaconRoot == nil {
+			return nil, nil, fmt.Errorf("beacon root not defined")
+		}
+		fmt.Fprintf(os.Stderr, "Applying block %d with beacon root %x\n", pre.Env.Number, pre.Env.BeaconRoot)
+		misc.ApplyBeaconRoot(&types.Header{
+			Time:       vmContext.Time,
+			BeaconRoot: pre.Env.BeaconRoot,
+		}, statedb)
+	}
 	// If DAO is supported/enabled, we need to handle it here. In geth 'proper', it's
 	// done in StateProcessor.Process(block, ...), right before transactions are applied.
 	if chainConfig.DAOForkSupport &&
@@ -163,6 +204,19 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 
 	for i, tx := range txs {
 		msg, err := core.TransactionToMessage(tx, signer, pre.Env.BaseFee)
+		if tx.Type() == types.BlobTxType && len(tx.BlobHashes()) == 0 {
+			err = fmt.Errorf("blob transaction with zero blobs")
+		}
+		for _, h := range tx.BlobHashes() {
+			if h[0] != params.BlobTxHashVersion {
+				err = fmt.Errorf("unversioned blob hash: %v", h)
+			}
+		}
+		txBlobGas := len(tx.BlobHashes()) * params.BlobTxBlobGasPerBlob
+		blockBlobGasUsed += txBlobGas
+		if blockBlobGasUsed > maxBlobGasPerBlock {
+			err = fmt.Errorf("block max blob gas exceeded: %d", blockBlobGasUsed)
+		}
 		if err != nil {
 			log.Warn("rejected tx", "index", i, "hash", tx.Hash(), "error", err)
 			rejectedTxs = append(rejectedTxs, &rejectedTx{i, err.Error()})
@@ -271,20 +325,32 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		return nil, nil, NewError(ErrorEVM, fmt.Errorf("could not commit state: %v", err))
 	}
 	execRs := &ExecutionResult{
-		StateRoot:   root,
-		TxRoot:      types.DeriveSha(includedTxs, trie.NewStackTrie(nil)),
-		ReceiptRoot: types.DeriveSha(receipts, trie.NewStackTrie(nil)),
-		Bloom:       types.CreateBloom(receipts),
-		LogsHash:    rlpHash(statedb.Logs()),
-		Receipts:    receipts,
-		Rejected:    rejectedTxs,
-		Difficulty:  (*math.HexOrDecimal256)(vmContext.Difficulty),
-		GasUsed:     (math.HexOrDecimal64)(gasUsed),
-		BaseFee:     (*math.HexOrDecimal256)(vmContext.BaseFee),
+		StateRoot:     root,
+		TxRoot:        types.DeriveSha(includedTxs, trie.NewStackTrie(nil)),
+		ReceiptRoot:   types.DeriveSha(receipts, trie.NewStackTrie(nil)),
+		Bloom:         types.CreateBloom(receipts),
+		LogsHash:      rlpHash(statedb.Logs()),
+		Receipts:      receipts,
+		Rejected:      rejectedTxs,
+		Difficulty:    (*math.HexOrDecimal256)(vmContext.Difficulty),
+		GasUsed:       (math.HexOrDecimal64)(gasUsed),
+		BaseFee:       (*math.HexOrDecimal256)(vmContext.BaseFee),
+		ExcessBlobGas: (*math.HexOrDecimal64)(vmContext.ExcessBlobGas),
 	}
 	if pre.Env.Withdrawals != nil {
 		h := types.DeriveSha(types.Withdrawals(pre.Env.Withdrawals), trie.NewStackTrie(nil))
 		execRs.WithdrawalsRoot = &h
+	}
+	if vmContext.ExcessBlobGas != nil {
+		// calculate and set the excess data gas at the end of this block execution
+		newBlobs := 0
+		for _, tx := range txs {
+			if tx.Type() == types.BlobTxType {
+				newBlobs += len(tx.BlobHashes())
+			}
+		}
+		blobGasUsed := uint64(newBlobs * params.BlobTxBlobGasPerBlob)
+		execRs.BlobGasUsed = (*math.HexOrDecimal64)(&blobGasUsed)
 	}
 	// Re-create statedb instance with new root upon the updated database
 	// for accessing latest states.
