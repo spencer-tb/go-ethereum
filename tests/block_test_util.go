@@ -88,6 +88,9 @@ type btHeader struct {
 	Timestamp        uint64
 	BaseFeePerGas    *big.Int
 	WithdrawalsRoot  *common.Hash
+	ExcessBlobGas    *uint64
+	BlobGasUsed      *uint64
+	BeaconRoot       *common.Hash
 }
 
 type btHeaderMarshaling struct {
@@ -98,6 +101,8 @@ type btHeaderMarshaling struct {
 	GasUsed       math.HexOrDecimal64
 	Timestamp     math.HexOrDecimal64
 	BaseFeePerGas *math.HexOrDecimal256
+	ExcessBlobGas *math.HexOrDecimal64
+	BlobGasUsed   *math.HexOrDecimal64
 }
 
 func (t *BlockTest) Run(snapshotter bool, tracer vm.EVMLogger) error {
@@ -158,18 +163,20 @@ func (t *BlockTest) Run(snapshotter bool, tracer vm.EVMLogger) error {
 
 func (t *BlockTest) genesis(config *params.ChainConfig) *core.Genesis {
 	return &core.Genesis{
-		Config:     config,
-		Nonce:      t.json.Genesis.Nonce.Uint64(),
-		Timestamp:  t.json.Genesis.Timestamp,
-		ParentHash: t.json.Genesis.ParentHash,
-		ExtraData:  t.json.Genesis.ExtraData,
-		GasLimit:   t.json.Genesis.GasLimit,
-		GasUsed:    t.json.Genesis.GasUsed,
-		Difficulty: t.json.Genesis.Difficulty,
-		Mixhash:    t.json.Genesis.MixHash,
-		Coinbase:   t.json.Genesis.Coinbase,
-		Alloc:      t.json.Pre,
-		BaseFee:    t.json.Genesis.BaseFeePerGas,
+		Config:        config,
+		Nonce:         t.json.Genesis.Nonce.Uint64(),
+		Timestamp:     t.json.Genesis.Timestamp,
+		ParentHash:    t.json.Genesis.ParentHash,
+		ExtraData:     t.json.Genesis.ExtraData,
+		GasLimit:      t.json.Genesis.GasLimit,
+		GasUsed:       t.json.Genesis.GasUsed,
+		Difficulty:    t.json.Genesis.Difficulty,
+		Mixhash:       t.json.Genesis.MixHash,
+		Coinbase:      t.json.Genesis.Coinbase,
+		Alloc:         t.json.Pre,
+		BaseFee:       t.json.Genesis.BaseFeePerGas,
+		BlobGasUsed:   t.json.Genesis.BlobGasUsed,
+		ExcessBlobGas: t.json.Genesis.ExcessBlobGas,
 	}
 }
 
@@ -277,6 +284,15 @@ func validateHeader(h *btHeader, h2 *types.Header) error {
 	}
 	if !reflect.DeepEqual(h.WithdrawalsRoot, h2.WithdrawalsHash) {
 		return fmt.Errorf("withdrawalsRoot: want: %v have: %v", h.WithdrawalsRoot, h2.WithdrawalsHash)
+	}
+	if !reflect.DeepEqual(h.BlobGasUsed, h2.BlobGasUsed) {
+		return fmt.Errorf("blobGasUsed: want: %v have: %v", h.BlobGasUsed, h2.BlobGasUsed)
+	}
+	if !reflect.DeepEqual(h.ExcessBlobGas, h2.ExcessBlobGas) {
+		return fmt.Errorf("excessBlobGas: want: %v have: %v", h.ExcessBlobGas, h2.ExcessBlobGas)
+	}
+	if !reflect.DeepEqual(h.BeaconRoot, h2.BeaconRoot) {
+		return fmt.Errorf("beaconRoot: want: %v have: %v", h.BeaconRoot, h2.BeaconRoot)
 	}
 	return nil
 }
