@@ -227,7 +227,7 @@ func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash,
 		WithdrawalsHash: withdrawalsRoot,
 		ExcessBlobGas:   params.ExcessBlobGas,
 		BlobGasUsed:     params.BlobGasUsed,
-		BeaconRoot:      beaconRoot,
+		// BeaconRoot:      beaconRoot,
 	}
 	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */).WithWithdrawals(params.Withdrawals)
 	if block.Hash() != params.BlockHash {
