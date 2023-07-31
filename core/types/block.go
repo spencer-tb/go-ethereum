@@ -381,6 +381,15 @@ func (b *Block) BlobGasUsed() *uint64 {
 	return blobGasUsed
 }
 
+func (b *Block) BeaconRoot() *common.Hash {
+	if b.header.BeaconRoot == nil {
+		return nil
+	}
+	var beaconRoot common.Hash
+	beaconRoot = *b.header.BeaconRoot
+	return &beaconRoot
+}
+
 func (b *Block) Header() *Header { return CopyHeader(b.header) }
 
 // Body returns the non-header content of the block.
