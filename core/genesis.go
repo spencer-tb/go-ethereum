@@ -485,6 +485,7 @@ func (g *Genesis) ToBlock() *types.Block {
 			if head.BlobGasUsed == nil {
 				head.BlobGasUsed = new(uint64)
 			}
+			head.BeaconRoot = &(common.Hash{})
 		}
 	}
 	if g.Config != nil && g.Config.IsCancun(big.NewInt(int64(g.Number)), g.Timestamp) {
