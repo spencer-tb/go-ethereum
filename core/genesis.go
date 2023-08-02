@@ -59,12 +59,13 @@ type Genesis struct {
 
 	// These fields are used for consensus tests. Please don't use them
 	// in actual genesis blocks.
-	Number        uint64      `json:"number"`
-	GasUsed       uint64      `json:"gasUsed"`
-	ParentHash    common.Hash `json:"parentHash"`
-	BaseFee       *big.Int    `json:"baseFeePerGas"` // EIP-1559
-	ExcessBlobGas *uint64     `json:"excessBlobGas"` // EIP-4844
-	BlobGasUsed   *uint64     `json:"blobGasUsed"`   // EIP-4844
+	Number        uint64       `json:"number"`
+	GasUsed       uint64       `json:"gasUsed"`
+	ParentHash    common.Hash  `json:"parentHash"`
+	BaseFee       *big.Int     `json:"baseFeePerGas"`         // EIP-1559
+	ExcessBlobGas *uint64      `json:"excessBlobGas"`         // EIP-4844
+	BlobGasUsed   *uint64      `json:"blobGasUsed"`           // EIP-4844
+	BeaconRoot    *common.Hash `json:"parentBeaconBlockRoot"` // EIP-4788
 }
 
 func ReadGenesis(db ethdb.Database) (*Genesis, error) {
@@ -485,7 +486,10 @@ func (g *Genesis) ToBlock() *types.Block {
 			if head.BlobGasUsed == nil {
 				head.BlobGasUsed = new(uint64)
 			}
-			head.BeaconRoot = &(common.Hash{})
+			head.BeaconRoot = g.BeaconRoot
+			if head.BeaconRoot == nil {
+				head.BeaconRoot = new(common.Hash)
+			}
 		}
 	}
 	if g.Config != nil && g.Config.IsCancun(big.NewInt(int64(g.Number)), g.Timestamp) {
