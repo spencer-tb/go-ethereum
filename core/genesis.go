@@ -59,12 +59,13 @@ type Genesis struct {
 
 	// These fields are used for consensus tests. Please don't use them
 	// in actual genesis blocks.
-	Number        uint64      `json:"number"`
-	GasUsed       uint64      `json:"gasUsed"`
-	ParentHash    common.Hash `json:"parentHash"`
-	BaseFee       *big.Int    `json:"baseFeePerGas"` // EIP-1559
-	ExcessBlobGas *uint64     `json:"excessBlobGas"` // EIP-4844
-	BlobGasUsed   *uint64     `json:"blobGasUsed"`   // EIP-4844
+	Number        uint64       `json:"number"`
+	GasUsed       uint64       `json:"gasUsed"`
+	ParentHash    common.Hash  `json:"parentHash"`
+	BaseFee       *big.Int     `json:"baseFeePerGas"`         // EIP-1559
+	ExcessBlobGas *uint64      `json:"excessBlobGas"`         // EIP-4844
+	BlobGasUsed   *uint64      `json:"blobGasUsed"`           // EIP-4844
+	BeaconRoot    *common.Hash `json:"parentBeaconBlockRoot"` // EIP-4788
 }
 
 func ReadGenesis(db ethdb.Database) (*Genesis, error) {
@@ -101,6 +102,7 @@ func ReadGenesis(db ethdb.Database) (*Genesis, error) {
 	genesis.BaseFee = genesisHeader.BaseFee
 	genesis.ExcessBlobGas = genesisHeader.ExcessBlobGas
 	genesis.BlobGasUsed = genesisHeader.BlobGasUsed
+	genesis.BeaconRoot = genesisHeader.BeaconRoot
 
 	return &genesis, nil
 }
@@ -493,6 +495,11 @@ func (g *Genesis) ToBlock() *types.Block {
 			head.ExcessBlobGas = &excessBlobGas
 		} else {
 			head.ExcessBlobGas = g.ExcessBlobGas
+		}
+		if g.BeaconRoot == nil {
+			head.BeaconRoot = &common.Hash{}
+		} else {
+			head.BeaconRoot = g.BeaconRoot
 		}
 	}
 	return types.NewBlock(head, nil, nil, nil, trie.NewStackTrie(nil)).WithWithdrawals(withdrawals)
