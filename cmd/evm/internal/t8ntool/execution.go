@@ -166,6 +166,13 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		rnd := common.BigToHash(pre.Env.Random)
 		vmContext.Random = &rnd
 	}
+	// Hack to assume Beacon Root contract is deployed in Shanghai.
+	// Required for ShanghaiToCancunAt15k transition fork tests.
+	if chainConfig.IsShanghai(new(big.Int).SetUint64(pre.Env.Number), pre.Env.Timestamp) {
+		if statedb.GetNonce(params.BeaconRootsStorageAddress) == 0 {
+			statedb.SetNonce(params.BeaconRootsStorageAddress, 1)
+		}
+	}
 	// If excess data gas (or beacon root) is defined, add it to vmContext
 	if chainConfig.IsCancun(new(big.Int).SetUint64(pre.Env.Number), pre.Env.Timestamp) {
 		if pre.Env.ExcessBlobGas != nil {
