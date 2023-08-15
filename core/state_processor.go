@@ -94,6 +94,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		statedb.AddAddressToAccessList(params.BeaconRootsStorageAddress)
 		_, _, _ = vmenv.Call(vm.AccountRef(msg.From), *msg.To, msg.Data, 100_000, common.Big0)
 		statedb.Finalise(true)
+		if blockNumber.Cmp(big.NewInt(0)) > 0 {
+			fmt.Errorf("state hash after beacon root: %v", statedb.IntermediateRoot(false))
+		}
 	}
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
