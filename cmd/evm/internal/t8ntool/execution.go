@@ -176,6 +176,9 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 			vmContext.ExcessBlobGas = &excessBlobGas
 		}
 	}
+	if vmContext.ExcessBlobGas != nil {
+		vmContext.BlobFee = eip4844.CalcBlobFee(*pre.Env.ExcessBlobGas)
+	}
 	// If DAO is supported/enabled, we need to handle it here. In geth 'proper', it's
 	// done in StateProcessor.Process(block, ...), right before transactions are applied.
 	if chainConfig.DAOForkSupport &&
