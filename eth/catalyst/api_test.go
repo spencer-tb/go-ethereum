@@ -73,7 +73,7 @@ func generateMergeChain(n int, merged bool) (*core.Genesis, []*types.Block) {
 		Config: &config,
 		Alloc: core.GenesisAlloc{
 			testAddr:                         {Balance: testBalance},
-			params.BeaconRootsStorageAddress: {Balance: common.Big0, Code: common.Hex2Bytes("3373fffffffffffffffffffffffffffffffffffffffe14604457602036146024575f5ffd5b620180005f350680545f35146037575f5ffd5b6201800001545f5260205ff35b6201800042064281555f359062018000015500")},
+			params.BeaconRootsStorageAddress: {Balance: common.Big0, Code: common.Hex2Bytes("3373fffffffffffffffffffffffffffffffffffffffe14604d57602036146024575f5ffd5b5f35801560495762016da0810690815414603c575f5ffd5b62016da001545f5260205ff35b5f5ffd5b62016da042064281555f359062016da0015500")},
 		},
 		ExtraData:  []byte("test genesis"),
 		Timestamp:  9000,
@@ -1631,8 +1631,8 @@ func TestParentBeaconBlockRoot(t *testing.T) {
 		t.Fatalf("unable to load db: %v", err)
 	}
 	var (
-		timeIdx = common.BigToHash(big.NewInt(int64(execData.ExecutionPayload.Timestamp % 98304)))
-		rootIdx = common.BigToHash(big.NewInt(int64((execData.ExecutionPayload.Timestamp % 98304) + 98304)))
+		timeIdx = common.BigToHash(big.NewInt(int64(execData.ExecutionPayload.Timestamp % 8191)))
+		rootIdx = common.BigToHash(big.NewInt(int64((execData.ExecutionPayload.Timestamp % 8191) + 8191)))
 	)
 
 	if num := db.GetState(params.BeaconRootsStorageAddress, timeIdx); num != timeIdx {
