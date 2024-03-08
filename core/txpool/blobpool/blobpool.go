@@ -1449,9 +1449,9 @@ func (p *BlobPool) drop() {
 func (p *BlobPool) Pending(filter txpool.PendingFilter) map[common.Address][]*txpool.LazyTransaction {
 	// If only plain transactions are requested, this pool is unsuitable as it
 	// contains none, don't even bother.
-	if filter.OnlyPlainTxs {
-		return nil
-	}
+	// if filter.OnlyPlainTxs {
+	// return nil
+	// }
 	// Track the amount of time waiting to retrieve the list of pending blob txs
 	// from the pool and the amount of time actually spent on assembling the data.
 	// The latter will be pretty much moot, but we've kept it to have symmetric
