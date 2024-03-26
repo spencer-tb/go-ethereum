@@ -246,7 +246,7 @@ var Forks = map[string]*params.ChainConfig{
 		ArrowGlacierBlock:   big.NewInt(0),
 		GrayGlacierBlock:    big.NewInt(0),
 	},
-	"Merge": {
+	"Paris": {
 		ChainID:                 big.NewInt(1),
 		HomesteadBlock:          big.NewInt(0),
 		EIP150Block:             big.NewInt(0),
@@ -281,7 +281,7 @@ var Forks = map[string]*params.ChainConfig{
 		TerminalTotalDifficulty: big.NewInt(0),
 		ShanghaiTime:            u64(0),
 	},
-	"MergeToShanghaiAtTime15k": {
+	"ParisToShanghaiAtTime15k": {
 		ChainID:                 big.NewInt(1),
 		HomesteadBlock:          big.NewInt(0),
 		EIP150Block:             big.NewInt(0),
