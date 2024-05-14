@@ -530,12 +530,17 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 	}
 	// Trigger the start of the verkle conversion if we're at the right block
 	if api.eth.BlockChain().Config().IsPrague(block.Number(), block.Time()) && !api.eth.BlockChain().Config().IsPrague(parent.Number(), parent.Time()) {
+		log.Info("Checking block for Verkle transition",
+			"currentNumber", block.Number(),
+			"currentTime", block.Time())
 		parent := api.eth.BlockChain().GetHeaderByNumber(block.NumberU64() - 1)
 		if parent == nil {
 			log.Error("Parent header not found",
 				"parentNumber", block.NumberU64()-1)
 		}
-		api.eth.BlockChain().StartVerkleTransition(parent.Root, common.Hash{}, api.eth.BlockChain().Config(), nil, parent.Root)
+		if !api.eth.BlockChain().Config().IsPrague(parent.Number, parent.Time) {
+			api.eth.BlockChain().StartVerkleTransition(parent.Root, common.Hash{}, api.eth.BlockChain().Config(), nil, parent.Root)
+		}
 	}
 	// Another cornercase: if the node is in snap sync mode, but the CL client
 	// tries to make it import a block. That should be denied as pushing something
