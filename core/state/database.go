@@ -400,7 +400,7 @@ func (db *cachingDB) OpenStorageTrie(stateRoot common.Hash, address common.Addre
 		}
 	}
 	if db.InTransition() {
-		// fmt.Printf("OpenStorageTrie during transition, state root=%x root=%x\n", stateRoot, root)
+		log.Info("OpenStorageTrie during transition", "state root", stateRoot, "root", root)
 		mpt, err := db.openStorageMPTrie(db.LastMerkleRoot, address, root, nil)
 		if err != nil {
 			return nil, err
