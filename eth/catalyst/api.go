@@ -531,7 +531,7 @@ func (api *ConsensusAPI) newPayload(params engine.ExecutableData, versionedHashe
 	// Trigger the start of the verkle conversion if we're at the right block
 	if api.eth.BlockChain().Config().IsPrague(block.Number(), block.Time()) && !api.eth.BlockChain().Config().IsPrague(parent.Number(), parent.Time()) {
 		log.Info("Checking block for Verkle transition",
-			"currentNumber", block.Number(),
+			"currentNumber", block.NumberU64(),
 			"currentTime", block.Time())
 		parent := api.eth.BlockChain().GetHeaderByNumber(block.NumberU64() - 1)
 		if parent == nil {
