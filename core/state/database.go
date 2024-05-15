@@ -382,23 +382,6 @@ func (db *cachingDB) openStorageMPTrie(stateRoot common.Hash, address common.Add
 
 // OpenStorageTrie opens the storage trie of an account
 func (db *cachingDB) OpenStorageTrie(stateRoot common.Hash, address common.Address, root common.Hash, self Trie) (Trie, error) {
-	// TODO this should only return a verkle tree
-	if db.Transitioned() {
-		mpt, err := db.openStorageMPTrie(types.EmptyRootHash, address, common.Hash{}, self)
-		if err != nil {
-			return nil, err
-		}
-		// Return a "storage trie" that is an adapter between the storge MPT
-		// and the unique verkle tree.
-		switch self := self.(type) {
-		case *trie.VerkleTrie:
-			return trie.NewTransitionTree(mpt.(*trie.StateTrie), self, true), nil
-		case *trie.TransitionTrie:
-			return trie.NewTransitionTree(mpt.(*trie.StateTrie), self.Overlay(), true), nil
-		default:
-			panic("unexpected trie type")
-		}
-	}
 	if db.InTransition() {
 		log.Info("OpenStorageTrie during transition", "state root", stateRoot, "root", root)
 		mpt, err := db.openStorageMPTrie(db.LastMerkleRoot, address, root, nil)
@@ -414,6 +397,23 @@ func (db *cachingDB) OpenStorageTrie(stateRoot common.Hash, address common.Addre
 			return trie.NewTransitionTree(mpt.(*trie.SecureTrie), self.Overlay(), true), nil
 		default:
 			return nil, errors.New("expected a verkle account tree, and found another type")
+		}
+	}
+	// TODO this should only return a verkle tree
+	if db.Transitioned() {
+		mpt, err := db.openStorageMPTrie(types.EmptyRootHash, address, common.Hash{}, self)
+		if err != nil {
+			return nil, err
+		}
+		// Return a "storage trie" that is an adapter between the storge MPT
+		// and the unique verkle tree.
+		switch self := self.(type) {
+		case *trie.VerkleTrie:
+			return trie.NewTransitionTree(mpt.(*trie.StateTrie), self, true), nil
+		case *trie.TransitionTrie:
+			return trie.NewTransitionTree(mpt.(*trie.StateTrie), self.Overlay(), true), nil
+		default:
+			panic("unexpected trie type")
 		}
 	}
 	mpt, err := db.openStorageMPTrie(stateRoot, address, root, nil)
