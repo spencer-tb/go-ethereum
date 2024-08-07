@@ -2,7 +2,7 @@ name: Execution Spec Tests Fill and Consume (Verkle genesis & conversion)
 
 on:
   push:
-    branches: [master, verkle-ci]
+    branches: [master]
   pull_request:
     branches: [master, kaustinen-with-shapella]
   workflow_dispatch:
