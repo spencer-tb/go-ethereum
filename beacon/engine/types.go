@@ -48,6 +48,7 @@ type PayloadAttributes struct {
 	SuggestedFeeRecipient common.Address      `json:"suggestedFeeRecipient" gencodec:"required"`
 	Withdrawals           []*types.Withdrawal `json:"withdrawals"`
 	BeaconRoot            *common.Hash        `json:"parentBeaconBlockRoot"`
+	TargetBlobCount       *uint64             `json:"targetBlobCount"`
 }
 
 // JSON type overrides for PayloadAttributes.
@@ -298,6 +299,7 @@ func ExecutableDataToBlockNoHash(data ExecutableData, versionedHashes []common.H
 		BlobGasUsed:      data.BlobGasUsed,
 		ParentBeaconRoot: beaconRoot,
 		RequestsHash:     requestsHash,
+		TargetBlobCount:  targetBlobCount,
 	}
 	return types.NewBlockWithHeader(header).
 			WithBody(types.Body{Transactions: txs, Uncles: nil, Withdrawals: data.Withdrawals}).
