@@ -800,7 +800,8 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 	if !scope.Contract.UseGas(interpreter.evm.callGasTemp) {
 		return nil, ErrOutOfGas
 	}
-	if !chargeCallVariantEIP4762(interpreter.evm, scope) {
+
+	if interpreter.evm.chainRules.IsEIP4762 && !chargeCallVariantEIP4762(interpreter.evm, scope) {
 		return nil, ErrExecutionReverted
 	}
 
@@ -845,7 +846,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 }
 
 func opCallCode(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
-	if !chargeCallVariantEIP4762(interpreter.evm, scope) {
+	if interpreter.evm.chainRules.IsEIP4762 && !chargeCallVariantEIP4762(interpreter.evm, scope) {
 		return nil, ErrExecutionReverted
 	}
 	// Pop gas. The actual gas is in interpreter.evm.callGasTemp.
@@ -883,7 +884,7 @@ func opCallCode(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([
 }
 
 func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
-	if !chargeCallVariantEIP4762(interpreter.evm, scope) {
+	if interpreter.evm.chainRules.IsEIP4762 && !chargeCallVariantEIP4762(interpreter.evm, scope) {
 		return nil, ErrExecutionReverted
 	}
 	stack := scope.Stack
@@ -914,7 +915,7 @@ func opDelegateCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext
 }
 
 func opStaticCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
-	if !chargeCallVariantEIP4762(interpreter.evm, scope) {
+	if interpreter.evm.chainRules.IsEIP4762 && !chargeCallVariantEIP4762(interpreter.evm, scope) {
 		return nil, ErrExecutionReverted
 	}
 	// Pop gas. The actual gas is in interpreter.evm.callGasTemp.
