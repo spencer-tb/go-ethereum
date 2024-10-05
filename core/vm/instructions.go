@@ -1078,7 +1078,7 @@ func opPush1(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]by
 			// touch next chunk if PUSH1 is at the boundary. if so, *pc has
 			// advanced past this boundary.
 			codeAddr := scope.Contract.CodeAddr
-			if !interpreter.evm.Accesses.TouchCodeChunksRangeAndChargeGas(codeAddr[:], *pc+1, uint64(1), uint64(len(scope.Contract.Code)), false, scope.Contract.UseGas) {
+			if !interpreter.evm.Accesses.TouchCodeChunksRangeAndChargeGas(codeAddr[:], *pc, uint64(1), uint64(len(scope.Contract.Code)), false, scope.Contract.UseGas) {
 				scope.Contract.Gas = 0
 				return nil, ErrOutOfGas
 			}
