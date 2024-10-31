@@ -67,12 +67,14 @@ type Genesis struct {
 
 	// These fields are used for consensus tests. Please don't use them
 	// in actual genesis blocks.
-	Number        uint64      `json:"number"`
-	GasUsed       uint64      `json:"gasUsed"`
-	ParentHash    common.Hash `json:"parentHash"`
-	BaseFee       *big.Int    `json:"baseFeePerGas"` // EIP-1559
-	ExcessBlobGas *uint64     `json:"excessBlobGas"` // EIP-4844
-	BlobGasUsed   *uint64     `json:"blobGasUsed"`   // EIP-4844
+	Number          uint64       `json:"number"`
+	GasUsed         uint64       `json:"gasUsed"`
+	ParentHash      common.Hash  `json:"parentHash"`
+	BaseFee         *big.Int     `json:"baseFeePerGas"` // EIP-1559
+	ExcessBlobGas   *uint64      `json:"excessBlobGas"` // EIP-4844
+	BlobGasUsed     *uint64      `json:"blobGasUsed"`   // EIP-4844
+	RequestsHash    *common.Hash `json:"requestsHash"`
+	TargetBlobCount *uint64      `json:"targetBlobCount"` // EIP-7742
 }
 
 func ReadGenesis(db ethdb.Database) (*Genesis, error) {
@@ -109,6 +111,7 @@ func ReadGenesis(db ethdb.Database) (*Genesis, error) {
 	genesis.BaseFee = genesisHeader.BaseFee
 	genesis.ExcessBlobGas = genesisHeader.ExcessBlobGas
 	genesis.BlobGasUsed = genesisHeader.BlobGasUsed
+	genesis.TargetBlobCount = genesisHeader.TargetBlobCount
 
 	return &genesis, nil
 }
@@ -210,17 +213,18 @@ func getGenesisState(db ethdb.Database, blockhash common.Hash) (alloc types.Gene
 
 // field type overrides for gencodec
 type genesisSpecMarshaling struct {
-	Nonce         math.HexOrDecimal64
-	Timestamp     math.HexOrDecimal64
-	ExtraData     hexutil.Bytes
-	GasLimit      math.HexOrDecimal64
-	GasUsed       math.HexOrDecimal64
-	Number        math.HexOrDecimal64
-	Difficulty    *math.HexOrDecimal256
-	Alloc         map[common.UnprefixedAddress]types.Account
-	BaseFee       *math.HexOrDecimal256
-	ExcessBlobGas *math.HexOrDecimal64
-	BlobGasUsed   *math.HexOrDecimal64
+	Nonce           math.HexOrDecimal64
+	Timestamp       math.HexOrDecimal64
+	ExtraData       hexutil.Bytes
+	GasLimit        math.HexOrDecimal64
+	GasUsed         math.HexOrDecimal64
+	Number          math.HexOrDecimal64
+	Difficulty      *math.HexOrDecimal256
+	Alloc           map[common.UnprefixedAddress]types.Account
+	BaseFee         *math.HexOrDecimal256
+	ExcessBlobGas   *math.HexOrDecimal64
+	BlobGasUsed     *math.HexOrDecimal64
+	TargetBlobCount *math.HexOrDecimal64
 }
 
 // GenesisMismatchError is raised when trying to overwrite an existing
@@ -475,6 +479,7 @@ func (g *Genesis) toBlockWithRoot(root common.Hash) *types.Block {
 			emptyRequests := [][]byte{{0x00}, {0x01}, {0x02}}
 			rhash := types.CalcRequestsHash(emptyRequests)
 			head.RequestsHash = &rhash
+			head.TargetBlobCount = g.TargetBlobCount
 		}
 	}
 	return types.NewBlock(head, &types.Body{Withdrawals: withdrawals}, nil, trie.NewStackTrie(nil))

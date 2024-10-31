@@ -71,6 +71,7 @@ type ExecutionResult struct {
 	CurrentBlobGasUsed   *math.HexOrDecimal64  `json:"blobGasUsed,omitempty"`
 	RequestsHash         *common.Hash          `json:"requestsHash,omitempty"`
 	Requests             [][]byte              `json:"requests,omitempty"`
+	TargetBlobCount      *math.HexOrDecimal64  `json:"targetBlobCount,omitempty"`
 }
 
 type executionResultMarshaling struct {
@@ -101,6 +102,7 @@ type stEnv struct {
 	BaseFee               *big.Int                            `json:"currentBaseFee,omitempty"`
 	ParentUncleHash       common.Hash                         `json:"parentUncleHash"`
 	ExcessBlobGas         *uint64                             `json:"currentExcessBlobGas,omitempty"`
+	TargetBlobCount       *uint64                             `json:"currentTargetBlobCount,omitempty"`
 	ParentExcessBlobGas   *uint64                             `json:"parentExcessBlobGas,omitempty"`
 	ParentBlobGasUsed     *uint64                             `json:"parentBlobGasUsed,omitempty"`
 	ParentBeaconBlockRoot *common.Hash                        `json:"parentBeaconBlockRoot"`
@@ -120,6 +122,7 @@ type stEnvMarshaling struct {
 	ParentTimestamp     math.HexOrDecimal64
 	BaseFee             *math.HexOrDecimal256
 	ExcessBlobGas       *math.HexOrDecimal64
+	TargetBlobCount     *math.HexOrDecimal64
 	ParentExcessBlobGas *math.HexOrDecimal64
 	ParentBlobGasUsed   *math.HexOrDecimal64
 }
@@ -417,6 +420,9 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 			requests[i] = requests[i][1:]
 		}
 		execRs.Requests = requests
+	}
+	if pre.Env.TargetBlobCount != nil {
+		execRs.TargetBlobCount = (*math.HexOrDecimal64)(pre.Env.TargetBlobCount)
 	}
 
 	// Re-create statedb instance with new root upon the updated database

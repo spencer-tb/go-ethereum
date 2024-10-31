@@ -19,6 +19,7 @@ func (e ExecutionPayloadEnvelope) MarshalJSON() ([]byte, error) {
 		BlockValue       *hexutil.Big    `json:"blockValue"  gencodec:"required"`
 		BlobsBundle      *BlobsBundleV1  `json:"blobsBundle"`
 		Requests         []hexutil.Bytes `json:"executionRequests"`
+		TargetBlobCount  *hexutil.Uint64 `json:"targetBlobCount"`
 		Override         bool            `json:"shouldOverrideBuilder"`
 		Witness          *hexutil.Bytes  `json:"witness,omitempty"`
 	}
@@ -32,6 +33,7 @@ func (e ExecutionPayloadEnvelope) MarshalJSON() ([]byte, error) {
 			enc.Requests[k] = v
 		}
 	}
+	enc.TargetBlobCount = (*hexutil.Uint64)(e.TargetBlobCount)
 	enc.Override = e.Override
 	enc.Witness = e.Witness
 	return json.Marshal(&enc)
@@ -44,6 +46,7 @@ func (e *ExecutionPayloadEnvelope) UnmarshalJSON(input []byte) error {
 		BlockValue       *hexutil.Big    `json:"blockValue"  gencodec:"required"`
 		BlobsBundle      *BlobsBundleV1  `json:"blobsBundle"`
 		Requests         []hexutil.Bytes `json:"executionRequests"`
+		TargetBlobCount  *hexutil.Uint64 `json:"targetBlobCount"`
 		Override         *bool           `json:"shouldOverrideBuilder"`
 		Witness          *hexutil.Bytes  `json:"witness,omitempty"`
 	}
@@ -67,6 +70,9 @@ func (e *ExecutionPayloadEnvelope) UnmarshalJSON(input []byte) error {
 		for k, v := range dec.Requests {
 			e.Requests[k] = v
 		}
+	}
+	if dec.TargetBlobCount != nil {
+		e.TargetBlobCount = (*uint64)(dec.TargetBlobCount)
 	}
 	if dec.Override != nil {
 		e.Override = *dec.Override

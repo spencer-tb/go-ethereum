@@ -219,8 +219,15 @@ func (c *SimulatedBeacon) sealBlock(withdrawals []*types.Withdrawal, timestamp u
 			blobHashes = append(blobHashes, kzg4844.CalcBlobHashV1(hasher, &c))
 		}
 	}
+
+	var tb *uint64
+	if envelope.TargetBlobCount != nil {
+		targetBlobValue := uint64(*envelope.TargetBlobCount)
+		tb = &targetBlobValue
+	}
+
 	// Mark the payload as canon
-	_, err = c.engineAPI.newPayload(*payload, blobHashes, &common.Hash{}, envelope.Requests, false)
+	_, err = c.engineAPI.newPayload(*payload, blobHashes, &common.Hash{}, envelope.Requests, tb, false)
 	if err != nil {
 		return err
 	}
