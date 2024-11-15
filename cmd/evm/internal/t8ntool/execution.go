@@ -71,7 +71,6 @@ type ExecutionResult struct {
 	CurrentBlobGasUsed   *math.HexOrDecimal64  `json:"blobGasUsed,omitempty"`
 	RequestsHash         *common.Hash          `json:"requestsHash,omitempty"`
 	Requests             [][]byte              `json:"requests,omitempty"`
-	TargetBlobCount      *math.HexOrDecimal64  `json:"targetBlobCount,omitempty"`
 }
 
 type executionResultMarshaling struct {
@@ -420,9 +419,6 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 			requests[i] = requests[i][1:]
 		}
 		execRs.Requests = requests
-	}
-	if pre.Env.TargetBlobCount != nil {
-		execRs.TargetBlobCount = (*math.HexOrDecimal64)(pre.Env.TargetBlobCount)
 	}
 
 	// Re-create statedb instance with new root upon the updated database
