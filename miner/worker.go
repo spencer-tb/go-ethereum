@@ -227,7 +227,7 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 	}
 	// Apply EIP-7742.
 	if miner.chainConfig.IsPrague(header.Number, header.Time) {
-		header.TargetBlobCount = genParams.blobTarget
+		header.TargetBlobsPerBlock = genParams.blobTarget
 	}
 	// Could potentially happen if starting to mine in an odd state.
 	// Note genParams.coinbase can be different with header.Coinbase

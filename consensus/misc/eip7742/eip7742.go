@@ -41,11 +41,11 @@ func VerifyEIP7742Header(parent, header *types.Header) error {
 	if header.BlobGasUsed == nil {
 		return errors.New("header is missing blobGasUsed")
 	}
-	if header.TargetBlobCount == nil {
+	if header.TargetBlobsPerBlock == nil {
 		return errors.New("header is missing target blob count")
 	}
 	// Verify that the blob gas used remains within reasonable limits.
-	maxBlobGas := (*header.TargetBlobCount * params.BlobTargetQuotient) * params.BlobTxBlobGasPerBlob
+	maxBlobGas := (*header.TargetBlobsPerBlock * params.BlobTargetQuotient) * params.BlobTxBlobGasPerBlob
 	if *header.BlobGasUsed > maxBlobGas {
 		return fmt.Errorf("blob gas used %d exceeds maximum allowance %d", *header.BlobGasUsed, maxBlobGas)
 	}
@@ -61,7 +61,7 @@ func VerifyEIP7742Header(parent, header *types.Header) error {
 		parentExcessBlobGas = *parent.ExcessBlobGas
 		parentBlobGasUsed = *parent.BlobGasUsed
 	}
-	expectedExcessBlobGas := CalcExcessBlobGas(parentExcessBlobGas, parentBlobGasUsed, *header.TargetBlobCount)
+	expectedExcessBlobGas := CalcExcessBlobGas(parentExcessBlobGas, parentBlobGasUsed, *header.TargetBlobsPerBlock)
 	if *header.ExcessBlobGas != expectedExcessBlobGas {
 		return fmt.Errorf("invalid excessBlobGas: have %d, want %d, parent excessBlobGas %d, parent blobDataUsed %d",
 			*header.ExcessBlobGas, expectedExcessBlobGas, parentExcessBlobGas, parentBlobGasUsed)
@@ -71,12 +71,12 @@ func VerifyEIP7742Header(parent, header *types.Header) error {
 
 // CalcExcessBlobGas calculates the excess blob gas after applying the set of
 // blobs on top of the excess blob gas.
-func CalcExcessBlobGas(parentExcessBlobGas, parentBlobGasUsed, targetBlobCount uint64) uint64 {
+func CalcExcessBlobGas(parentExcessBlobGas, parentBlobGasUsed, targetBlobsPerBlock uint64) uint64 {
 	excessBlobGas := parentExcessBlobGas + parentBlobGasUsed
-	if excessBlobGas < targetBlobCount*params.BlobTxBlobGasPerBlob {
+	if excessBlobGas < targetBlobsPerBlock*params.BlobTxBlobGasPerBlob {
 		return 0
 	}
-	return excessBlobGas - (targetBlobCount * params.BlobTxBlobGasPerBlob)
+	return excessBlobGas - (targetBlobsPerBlock * params.BlobTxBlobGasPerBlob)
 }
 
 // CalcBlobFee calculates the blobfee from the header's excess blob gas field.

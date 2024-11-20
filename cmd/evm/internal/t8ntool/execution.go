@@ -101,7 +101,7 @@ type stEnv struct {
 	BaseFee               *big.Int                            `json:"currentBaseFee,omitempty"`
 	ParentUncleHash       common.Hash                         `json:"parentUncleHash"`
 	ExcessBlobGas         *uint64                             `json:"currentExcessBlobGas,omitempty"`
-	TargetBlobCount       *uint64                             `json:"currentTargetBlobCount,omitempty"`
+	TargetBlobsPerBlock   *uint64                             `json:"currentTargetBlobsPerBlock,omitempty"`
 	ParentExcessBlobGas   *uint64                             `json:"parentExcessBlobGas,omitempty"`
 	ParentBlobGasUsed     *uint64                             `json:"parentBlobGasUsed,omitempty"`
 	ParentBeaconBlockRoot *common.Hash                        `json:"parentBeaconBlockRoot"`
@@ -121,7 +121,7 @@ type stEnvMarshaling struct {
 	ParentTimestamp     math.HexOrDecimal64
 	BaseFee             *math.HexOrDecimal256
 	ExcessBlobGas       *math.HexOrDecimal64
-	TargetBlobCount     *math.HexOrDecimal64
+	TargetBlobsPerBlock *math.HexOrDecimal64
 	ParentExcessBlobGas *math.HexOrDecimal64
 	ParentBlobGasUsed   *math.HexOrDecimal64
 }

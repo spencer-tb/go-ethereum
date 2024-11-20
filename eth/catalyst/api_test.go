@@ -491,7 +491,7 @@ func TestFullAPI(t *testing.T) {
 	setupBlocks(t, ethservice, 10, parent, callback, nil, nil, nil)
 }
 
-func setupBlocks(t *testing.T, ethservice *eth.Ethereum, n int, parent *types.Header, callback func(parent *types.Header), withdrawals [][]*types.Withdrawal, beaconRoots []common.Hash, targetBlobCount *uint64) []*types.Header {
+func setupBlocks(t *testing.T, ethservice *eth.Ethereum, n int, parent *types.Header, callback func(parent *types.Header), withdrawals [][]*types.Withdrawal, beaconRoots []common.Hash, targetBlobsPerBlock *uint64) []*types.Header {
 	api := NewConsensusAPI(ethservice)
 	var blocks []*types.Header
 	for i := 0; i < n; i++ {
@@ -505,8 +505,8 @@ func setupBlocks(t *testing.T, ethservice *eth.Ethereum, n int, parent *types.He
 			h = &beaconRoots[i]
 		}
 
-		envelope := getNewEnvelope(t, api, parent, w, h, targetBlobCount)
-		execResp, err := api.newPayload(*envelope.ExecutionPayload, []common.Hash{}, h, envelope.Requests, targetBlobCount, false)
+		envelope := getNewEnvelope(t, api, parent, w, h, targetBlobsPerBlock)
+		execResp, err := api.newPayload(*envelope.ExecutionPayload, []common.Hash{}, h, envelope.Requests, targetBlobsPerBlock, false)
 		if err != nil {
 			t.Fatalf("can't execute payload: %v", err)
 		}
@@ -677,13 +677,13 @@ func TestNewPayloadOnInvalidChain(t *testing.T) {
 
 func assembleEnvelope(api *ConsensusAPI, parentHash common.Hash, params *engine.PayloadAttributes) (*engine.ExecutionPayloadEnvelope, error) {
 	args := &miner.BuildPayloadArgs{
-		Parent:          parentHash,
-		Timestamp:       params.Timestamp,
-		FeeRecipient:    params.SuggestedFeeRecipient,
-		Random:          params.Random,
-		Withdrawals:     params.Withdrawals,
-		BeaconRoot:      params.BeaconRoot,
-		TargetBlobCount: params.TargetBlobCount,
+		Parent:              parentHash,
+		Timestamp:           params.Timestamp,
+		FeeRecipient:        params.SuggestedFeeRecipient,
+		Random:              params.Random,
+		Withdrawals:         params.Withdrawals,
+		BeaconRoot:          params.BeaconRoot,
+		TargetBlobsPerBlock: params.TargetBlobsPerBlock,
 	}
 	payload, err := api.eth.Miner().BuildPayload(args, false)
 	if err != nil {
@@ -760,14 +760,14 @@ func TestEmptyBlocks(t *testing.T) {
 	}
 }
 
-func getNewEnvelope(t *testing.T, api *ConsensusAPI, parent *types.Header, withdrawals []*types.Withdrawal, beaconRoot *common.Hash, targetBlobCount *uint64) *engine.ExecutionPayloadEnvelope {
+func getNewEnvelope(t *testing.T, api *ConsensusAPI, parent *types.Header, withdrawals []*types.Withdrawal, beaconRoot *common.Hash, targetBlobsPerBlock *uint64) *engine.ExecutionPayloadEnvelope {
 	params := engine.PayloadAttributes{
 		Timestamp:             parent.Time + 1,
 		Random:                crypto.Keccak256Hash([]byte{byte(1)}),
 		SuggestedFeeRecipient: parent.Coinbase,
 		Withdrawals:           withdrawals,
 		BeaconRoot:            beaconRoot,
-		TargetBlobCount:       targetBlobCount,
+		TargetBlobsPerBlock:   targetBlobsPerBlock,
 	}
 
 	envelope, err := assembleEnvelope(api, parent.Hash(), &params)
@@ -777,8 +777,8 @@ func getNewEnvelope(t *testing.T, api *ConsensusAPI, parent *types.Header, withd
 	return envelope
 }
 
-func getNewPayload(t *testing.T, api *ConsensusAPI, parent *types.Header, withdrawals []*types.Withdrawal, beaconRoot *common.Hash, targetBlobCount *uint64) *engine.ExecutableData {
-	return getNewEnvelope(t, api, parent, withdrawals, beaconRoot, targetBlobCount).ExecutionPayload
+func getNewPayload(t *testing.T, api *ConsensusAPI, parent *types.Header, withdrawals []*types.Withdrawal, beaconRoot *common.Hash, targetBlobsPerBlock *uint64) *engine.ExecutableData {
+	return getNewEnvelope(t, api, parent, withdrawals, beaconRoot, targetBlobsPerBlock).ExecutionPayload
 }
 
 // setBlockhash sets the blockhash of a modified ExecutableData.

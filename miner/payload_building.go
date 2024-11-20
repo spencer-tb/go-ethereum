@@ -37,14 +37,14 @@ import (
 // Check engine-api specification for more details.
 // https://github.com/ethereum/execution-apis/blob/main/src/engine/cancun.md#payloadattributesv3
 type BuildPayloadArgs struct {
-	Parent          common.Hash       // The parent block to build payload on top
-	Timestamp       uint64            // The provided timestamp of generated payload
-	FeeRecipient    common.Address    // The provided recipient address for collecting transaction fee
-	Random          common.Hash       // The provided randomness value
-	Withdrawals     types.Withdrawals // The provided withdrawals
-	BeaconRoot      *common.Hash      // The provided beaconRoot (Cancun)
-	TargetBlobCount *uint64
-	Version         engine.PayloadVersion // Versioning byte for payload id calculation.
+	Parent              common.Hash       // The parent block to build payload on top
+	Timestamp           uint64            // The provided timestamp of generated payload
+	FeeRecipient        common.Address    // The provided recipient address for collecting transaction fee
+	Random              common.Hash       // The provided randomness value
+	Withdrawals         types.Withdrawals // The provided withdrawals
+	BeaconRoot          *common.Hash      // The provided beaconRoot (Cancun)
+	TargetBlobsPerBlock *uint64
+	Version             engine.PayloadVersion // Versioning byte for payload id calculation.
 }
 
 // Id computes an 8-byte identifier by hashing the components of the payload arguments.
@@ -58,8 +58,8 @@ func (args *BuildPayloadArgs) Id() engine.PayloadID {
 	if args.BeaconRoot != nil {
 		hasher.Write(args.BeaconRoot[:])
 	}
-	if args.TargetBlobCount != nil {
-		binary.Write(hasher, binary.BigEndian, *args.TargetBlobCount)
+	if args.TargetBlobsPerBlock != nil {
+		binary.Write(hasher, binary.BigEndian, *args.TargetBlobsPerBlock)
 	}
 	var out engine.PayloadID
 	copy(out[:], hasher.Sum(nil)[:8])
@@ -222,7 +222,7 @@ func (miner *Miner) buildPayload(args *BuildPayloadArgs, witness bool) (*Payload
 		random:      args.Random,
 		withdrawals: args.Withdrawals,
 		beaconRoot:  args.BeaconRoot,
-		blobTarget:  args.TargetBlobCount,
+		blobTarget:  args.TargetBlobsPerBlock,
 		noTxs:       true,
 	}
 	empty := miner.generateWork(emptyParams, witness)
@@ -253,7 +253,7 @@ func (miner *Miner) buildPayload(args *BuildPayloadArgs, witness bool) (*Payload
 			random:      args.Random,
 			withdrawals: args.Withdrawals,
 			beaconRoot:  args.BeaconRoot,
-			blobTarget:  args.TargetBlobCount,
+			blobTarget:  args.TargetBlobsPerBlock,
 			noTxs:       false,
 		}
 

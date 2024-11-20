@@ -49,13 +49,13 @@ type PayloadAttributes struct {
 	SuggestedFeeRecipient common.Address      `json:"suggestedFeeRecipient" gencodec:"required"`
 	Withdrawals           []*types.Withdrawal `json:"withdrawals"`
 	BeaconRoot            *common.Hash        `json:"parentBeaconBlockRoot"`
-	TargetBlobCount       *uint64             `json:"targetBlobCount"`
+	TargetBlobsPerBlock   *uint64             `json:"targetBlobsPerBlock"`
 }
 
 // JSON type overrides for PayloadAttributes.
 type payloadAttributesMarshaling struct {
-	Timestamp       hexutil.Uint64
-	TargetBlobCount *hexutil.Uint64
+	Timestamp           hexutil.Uint64
+	TargetBlobsPerBlock *hexutil.Uint64
 }
 
 //go:generate go run github.com/fjl/gencodec -type ExecutableData -field-override executableDataMarshaling -out gen_ed.go
@@ -107,13 +107,13 @@ type StatelessPayloadStatusV1 struct {
 //go:generate go run github.com/fjl/gencodec -type ExecutionPayloadEnvelope -field-override executionPayloadEnvelopeMarshaling -out gen_epe.go
 
 type ExecutionPayloadEnvelope struct {
-	ExecutionPayload *ExecutableData `json:"executionPayload"  gencodec:"required"`
-	BlockValue       *big.Int        `json:"blockValue"  gencodec:"required"`
-	BlobsBundle      *BlobsBundleV1  `json:"blobsBundle"`
-	Requests         [][]byte        `json:"executionRequests"`
-	TargetBlobCount  *uint64         `json:"targetBlobCount"`
-	Override         bool            `json:"shouldOverrideBuilder"`
-	Witness          *hexutil.Bytes  `json:"witness,omitempty"`
+	ExecutionPayload    *ExecutableData `json:"executionPayload"  gencodec:"required"`
+	BlockValue          *big.Int        `json:"blockValue"  gencodec:"required"`
+	BlobsBundle         *BlobsBundleV1  `json:"blobsBundle"`
+	Requests            [][]byte        `json:"executionRequests"`
+	TargetBlobsPerBlock *uint64         `json:"targetBlobsPerBlock"`
+	Override            bool            `json:"shouldOverrideBuilder"`
+	Witness             *hexutil.Bytes  `json:"witness,omitempty"`
 }
 
 type BlobsBundleV1 struct {
@@ -129,9 +129,9 @@ type BlobAndProofV1 struct {
 
 // JSON type overrides for ExecutionPayloadEnvelope.
 type executionPayloadEnvelopeMarshaling struct {
-	BlockValue      *hexutil.Big
-	Requests        []hexutil.Bytes
-	TargetBlobCount *hexutil.Uint64
+	BlockValue          *hexutil.Big
+	Requests            []hexutil.Bytes
+	TargetBlobsPerBlock *hexutil.Uint64
 }
 
 type PayloadStatusV1 struct {
@@ -218,8 +218,8 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 // and that the blockhash of the constructed block matches the parameters. Nil
 // Withdrawals value will propagate through the returned block. Empty
 // Withdrawals value must be passed via non-nil, length 0 value in data.
-func ExecutableDataToBlock(data ExecutableData, versionedHashes []common.Hash, beaconRoot *common.Hash, requests [][]byte, targetBlobCount *uint64) (*types.Block, error) {
-	block, err := ExecutableDataToBlockNoHash(data, versionedHashes, beaconRoot, requests, targetBlobCount)
+func ExecutableDataToBlock(data ExecutableData, versionedHashes []common.Hash, beaconRoot *common.Hash, requests [][]byte, targetBlobsPerBlock *uint64) (*types.Block, error) {
+	block, err := ExecutableDataToBlockNoHash(data, versionedHashes, beaconRoot, requests, targetBlobsPerBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func ExecutableDataToBlock(data ExecutableData, versionedHashes []common.Hash, b
 // ExecutableDataToBlockNoHash is analogous to ExecutableDataToBlock, but is used
 // for stateless execution, so it skips checking if the executable data hashes to
 // the requested hash (stateless has to *compute* the root hash, it's not given).
-func ExecutableDataToBlockNoHash(data ExecutableData, versionedHashes []common.Hash, beaconRoot *common.Hash, requests [][]byte, targetBlobCount *uint64) (*types.Block, error) {
+func ExecutableDataToBlockNoHash(data ExecutableData, versionedHashes []common.Hash, beaconRoot *common.Hash, requests [][]byte, targetBlobsPerBlock *uint64) (*types.Block, error) {
 	txs, err := decodeTransactions(data.Transactions)
 	if err != nil {
 		return nil, err
@@ -283,27 +283,27 @@ func ExecutableDataToBlockNoHash(data ExecutableData, versionedHashes []common.H
 	}
 
 	header := &types.Header{
-		ParentHash:       data.ParentHash,
-		UncleHash:        types.EmptyUncleHash,
-		Coinbase:         data.FeeRecipient,
-		Root:             data.StateRoot,
-		TxHash:           types.DeriveSha(types.Transactions(txs), trie.NewStackTrie(nil)),
-		ReceiptHash:      data.ReceiptsRoot,
-		Bloom:            types.BytesToBloom(data.LogsBloom),
-		Difficulty:       common.Big0,
-		Number:           new(big.Int).SetUint64(data.Number),
-		GasLimit:         data.GasLimit,
-		GasUsed:          data.GasUsed,
-		Time:             data.Timestamp,
-		BaseFee:          data.BaseFeePerGas,
-		Extra:            data.ExtraData,
-		MixDigest:        data.Random,
-		WithdrawalsHash:  withdrawalsRoot,
-		ExcessBlobGas:    data.ExcessBlobGas,
-		BlobGasUsed:      data.BlobGasUsed,
-		ParentBeaconRoot: beaconRoot,
-		RequestsHash:     requestsHash,
-		TargetBlobCount:  targetBlobCount,
+		ParentHash:          data.ParentHash,
+		UncleHash:           types.EmptyUncleHash,
+		Coinbase:            data.FeeRecipient,
+		Root:                data.StateRoot,
+		TxHash:              types.DeriveSha(types.Transactions(txs), trie.NewStackTrie(nil)),
+		ReceiptHash:         data.ReceiptsRoot,
+		Bloom:               types.BytesToBloom(data.LogsBloom),
+		Difficulty:          common.Big0,
+		Number:              new(big.Int).SetUint64(data.Number),
+		GasLimit:            data.GasLimit,
+		GasUsed:             data.GasUsed,
+		Time:                data.Timestamp,
+		BaseFee:             data.BaseFeePerGas,
+		Extra:               data.ExtraData,
+		MixDigest:           data.Random,
+		WithdrawalsHash:     withdrawalsRoot,
+		ExcessBlobGas:       data.ExcessBlobGas,
+		BlobGasUsed:         data.BlobGasUsed,
+		ParentBeaconRoot:    beaconRoot,
+		RequestsHash:        requestsHash,
+		TargetBlobsPerBlock: targetBlobsPerBlock,
 	}
 	return types.NewBlockWithHeader(header).
 			WithBody(types.Body{Transactions: txs, Uncles: nil, Withdrawals: data.Withdrawals}).
@@ -359,12 +359,12 @@ func BlockToExecutableData(block *types.Block, fees *big.Int, sidecars []*types.
 	}
 
 	return &ExecutionPayloadEnvelope{
-		ExecutionPayload: data,
-		BlockValue:       fees,
-		BlobsBundle:      &bundle,
-		Requests:         plainRequests,
-		TargetBlobCount:  block.TargetBlobCount(),
-		Override:         false,
+		ExecutionPayload:    data,
+		BlockValue:          fees,
+		BlobsBundle:         &bundle,
+		Requests:            plainRequests,
+		TargetBlobsPerBlock: block.TargetBlobsPerBlock(),
+		Override:            false,
 	}
 }
 

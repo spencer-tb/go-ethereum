@@ -21,7 +21,7 @@ func (p PayloadAttributes) MarshalJSON() ([]byte, error) {
 		SuggestedFeeRecipient common.Address      `json:"suggestedFeeRecipient" gencodec:"required"`
 		Withdrawals           []*types.Withdrawal `json:"withdrawals"`
 		BeaconRoot            *common.Hash        `json:"parentBeaconBlockRoot"`
-		TargetBlobCount       *hexutil.Uint64     `json:"targetBlobCount"`
+		TargetBlobsPerBlock       *hexutil.Uint64     `json:"targetBlobsPerBlock"`
 	}
 	var enc PayloadAttributes
 	enc.Timestamp = hexutil.Uint64(p.Timestamp)
@@ -29,7 +29,7 @@ func (p PayloadAttributes) MarshalJSON() ([]byte, error) {
 	enc.SuggestedFeeRecipient = p.SuggestedFeeRecipient
 	enc.Withdrawals = p.Withdrawals
 	enc.BeaconRoot = p.BeaconRoot
-	enc.TargetBlobCount = (*hexutil.Uint64)(p.TargetBlobCount)
+	enc.TargetBlobsPerBlock = (*hexutil.Uint64)(p.TargetBlobsPerBlock)
 	return json.Marshal(&enc)
 }
 
@@ -41,7 +41,7 @@ func (p *PayloadAttributes) UnmarshalJSON(input []byte) error {
 		SuggestedFeeRecipient *common.Address     `json:"suggestedFeeRecipient" gencodec:"required"`
 		Withdrawals           []*types.Withdrawal `json:"withdrawals"`
 		BeaconRoot            *common.Hash        `json:"parentBeaconBlockRoot"`
-		TargetBlobCount       *hexutil.Uint64     `json:"targetBlobCount"`
+		TargetBlobsPerBlock       *hexutil.Uint64     `json:"targetBlobsPerBlock"`
 	}
 	var dec PayloadAttributes
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -65,8 +65,8 @@ func (p *PayloadAttributes) UnmarshalJSON(input []byte) error {
 	if dec.BeaconRoot != nil {
 		p.BeaconRoot = dec.BeaconRoot
 	}
-	if dec.TargetBlobCount != nil {
-		p.TargetBlobCount = (*uint64)(dec.TargetBlobCount)
+	if dec.TargetBlobsPerBlock != nil {
+		p.TargetBlobsPerBlock = (*uint64)(dec.TargetBlobsPerBlock)
 	}
 	return nil
 }

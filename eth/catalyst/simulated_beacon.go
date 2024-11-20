@@ -221,8 +221,8 @@ func (c *SimulatedBeacon) sealBlock(withdrawals []*types.Withdrawal, timestamp u
 	}
 
 	var tb *uint64
-	if envelope.TargetBlobCount != nil {
-		targetBlobValue := uint64(*envelope.TargetBlobCount)
+	if envelope.TargetBlobsPerBlock != nil {
+		targetBlobValue := uint64(*envelope.TargetBlobsPerBlock)
 		tb = &targetBlobValue
 	}
 

@@ -97,20 +97,20 @@ type btHeader struct {
 	ExcessBlobGas         *uint64
 	ParentBeaconBlockRoot *common.Hash
 	RequestsHash          *common.Hash
-	TargetBlobCount       *uint64
+	TargetBlobsPerBlock   *uint64
 }
 
 type btHeaderMarshaling struct {
-	ExtraData       hexutil.Bytes
-	Number          *math.HexOrDecimal256
-	Difficulty      *math.HexOrDecimal256
-	GasLimit        math.HexOrDecimal64
-	GasUsed         math.HexOrDecimal64
-	Timestamp       math.HexOrDecimal64
-	BaseFeePerGas   *math.HexOrDecimal256
-	BlobGasUsed     *math.HexOrDecimal64
-	ExcessBlobGas   *math.HexOrDecimal64
-	TargetBlobCount *math.HexOrDecimal64
+	ExtraData           hexutil.Bytes
+	Number              *math.HexOrDecimal256
+	Difficulty          *math.HexOrDecimal256
+	GasLimit            math.HexOrDecimal64
+	GasUsed             math.HexOrDecimal64
+	Timestamp           math.HexOrDecimal64
+	BaseFeePerGas       *math.HexOrDecimal256
+	BlobGasUsed         *math.HexOrDecimal64
+	ExcessBlobGas       *math.HexOrDecimal64
+	TargetBlobsPerBlock *math.HexOrDecimal64
 }
 
 func (t *BlockTest) Run(snapshotter bool, scheme string, witness bool, tracer *tracing.Hooks, postCheck func(error, *core.BlockChain)) (result error) {
@@ -193,22 +193,22 @@ func (t *BlockTest) Run(snapshotter bool, scheme string, witness bool, tracer *t
 
 func (t *BlockTest) genesis(config *params.ChainConfig) *core.Genesis {
 	return &core.Genesis{
-		Config:          config,
-		Nonce:           t.json.Genesis.Nonce.Uint64(),
-		Timestamp:       t.json.Genesis.Timestamp,
-		ParentHash:      t.json.Genesis.ParentHash,
-		ExtraData:       t.json.Genesis.ExtraData,
-		GasLimit:        t.json.Genesis.GasLimit,
-		GasUsed:         t.json.Genesis.GasUsed,
-		Difficulty:      t.json.Genesis.Difficulty,
-		Mixhash:         t.json.Genesis.MixHash,
-		Coinbase:        t.json.Genesis.Coinbase,
-		Alloc:           t.json.Pre,
-		BaseFee:         t.json.Genesis.BaseFeePerGas,
-		BlobGasUsed:     t.json.Genesis.BlobGasUsed,
-		ExcessBlobGas:   t.json.Genesis.ExcessBlobGas,
-		RequestsHash:    t.json.Genesis.RequestsHash,
-		TargetBlobCount: t.json.Genesis.TargetBlobCount,
+		Config:              config,
+		Nonce:               t.json.Genesis.Nonce.Uint64(),
+		Timestamp:           t.json.Genesis.Timestamp,
+		ParentHash:          t.json.Genesis.ParentHash,
+		ExtraData:           t.json.Genesis.ExtraData,
+		GasLimit:            t.json.Genesis.GasLimit,
+		GasUsed:             t.json.Genesis.GasUsed,
+		Difficulty:          t.json.Genesis.Difficulty,
+		Mixhash:             t.json.Genesis.MixHash,
+		Coinbase:            t.json.Genesis.Coinbase,
+		Alloc:               t.json.Pre,
+		BaseFee:             t.json.Genesis.BaseFeePerGas,
+		BlobGasUsed:         t.json.Genesis.BlobGasUsed,
+		ExcessBlobGas:       t.json.Genesis.ExcessBlobGas,
+		RequestsHash:        t.json.Genesis.RequestsHash,
+		TargetBlobsPerBlock: t.json.Genesis.TargetBlobsPerBlock,
 	}
 }
 

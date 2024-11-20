@@ -107,23 +107,23 @@ type Header struct {
 	// RequestsHash was added by EIP-7685 and is ignored in legacy headers.
 	RequestsHash *common.Hash `json:"requestsRoot" rlp:"optional"`
 
-	// TargetBlobCount was added by EIP-7742 and is ignored in legacy headers.
-	TargetBlobCount *uint64 `json:"targetBlobCount" rlp:"optional"`
+	// TargetBlobsPerBlock was added by EIP-7742 and is ignored in legacy headers.
+	TargetBlobsPerBlock *uint64 `json:"targetBlobsPerBlock" rlp:"optional"`
 }
 
 // field type overrides for gencodec
 type headerMarshaling struct {
-	Difficulty      *hexutil.Big
-	Number          *hexutil.Big
-	GasLimit        hexutil.Uint64
-	GasUsed         hexutil.Uint64
-	Time            hexutil.Uint64
-	Extra           hexutil.Bytes
-	BaseFee         *hexutil.Big
-	Hash            common.Hash `json:"hash"` // adds call to Hash() in MarshalJSON
-	BlobGasUsed     *hexutil.Uint64
-	ExcessBlobGas   *hexutil.Uint64
-	TargetBlobCount *hexutil.Uint64
+	Difficulty          *hexutil.Big
+	Number              *hexutil.Big
+	GasLimit            hexutil.Uint64
+	GasUsed             hexutil.Uint64
+	Time                hexutil.Uint64
+	Extra               hexutil.Bytes
+	BaseFee             *hexutil.Big
+	Hash                common.Hash `json:"hash"` // adds call to Hash() in MarshalJSON
+	BlobGasUsed         *hexutil.Uint64
+	ExcessBlobGas       *hexutil.Uint64
+	TargetBlobsPerBlock *hexutil.Uint64
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
@@ -427,13 +427,13 @@ func (b *Block) BlobGasUsed() *uint64 {
 	return blobGasUsed
 }
 
-func (b *Block) TargetBlobCount() *uint64 {
-	var targetBlobCount *uint64
-	if b.header.TargetBlobCount != nil {
-		targetBlobCount = new(uint64)
-		*targetBlobCount = *b.header.TargetBlobCount
+func (b *Block) TargetBlobsPerBlock() *uint64 {
+	var targetBlobsPerBlock *uint64
+	if b.header.TargetBlobsPerBlock != nil {
+		targetBlobsPerBlock = new(uint64)
+		*targetBlobsPerBlock = *b.header.TargetBlobsPerBlock
 	}
-	return targetBlobCount
+	return targetBlobsPerBlock
 }
 
 // ExecutionWitness returns the verkle execution witneess + proof for a block

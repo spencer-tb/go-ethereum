@@ -34,7 +34,7 @@ func (s stEnv) MarshalJSON() ([]byte, error) {
 		BaseFee               *math.HexOrDecimal256               `json:"currentBaseFee,omitempty"`
 		ParentUncleHash       common.Hash                         `json:"parentUncleHash"`
 		ExcessBlobGas         *math.HexOrDecimal64                `json:"currentExcessBlobGas,omitempty"`
-		TargetBlobCount       *math.HexOrDecimal64                `json:"currentTargetBlobCount,omitempty"`
+		TargetBlobsPerBlock       *math.HexOrDecimal64                `json:"currentTargetBlobsPerBlock,omitempty"`
 		ParentExcessBlobGas   *math.HexOrDecimal64                `json:"parentExcessBlobGas,omitempty"`
 		ParentBlobGasUsed     *math.HexOrDecimal64                `json:"parentBlobGasUsed,omitempty"`
 		ParentBeaconBlockRoot *common.Hash                        `json:"parentBeaconBlockRoot"`
@@ -57,7 +57,7 @@ func (s stEnv) MarshalJSON() ([]byte, error) {
 	enc.BaseFee = (*math.HexOrDecimal256)(s.BaseFee)
 	enc.ParentUncleHash = s.ParentUncleHash
 	enc.ExcessBlobGas = (*math.HexOrDecimal64)(s.ExcessBlobGas)
-	enc.TargetBlobCount = (*math.HexOrDecimal64)(s.TargetBlobCount)
+	enc.TargetBlobsPerBlock = (*math.HexOrDecimal64)(s.TargetBlobsPerBlock)
 	enc.ParentExcessBlobGas = (*math.HexOrDecimal64)(s.ParentExcessBlobGas)
 	enc.ParentBlobGasUsed = (*math.HexOrDecimal64)(s.ParentBlobGasUsed)
 	enc.ParentBeaconBlockRoot = s.ParentBeaconBlockRoot
@@ -84,7 +84,7 @@ func (s *stEnv) UnmarshalJSON(input []byte) error {
 		BaseFee               *math.HexOrDecimal256               `json:"currentBaseFee,omitempty"`
 		ParentUncleHash       *common.Hash                        `json:"parentUncleHash"`
 		ExcessBlobGas         *math.HexOrDecimal64                `json:"currentExcessBlobGas,omitempty"`
-		TargetBlobCount       *math.HexOrDecimal64                `json:"currentTargetBlobCount,omitempty"`
+		TargetBlobsPerBlock       *math.HexOrDecimal64                `json:"currentTargetBlobsPerBlock,omitempty"`
 		ParentExcessBlobGas   *math.HexOrDecimal64                `json:"parentExcessBlobGas,omitempty"`
 		ParentBlobGasUsed     *math.HexOrDecimal64                `json:"parentBlobGasUsed,omitempty"`
 		ParentBeaconBlockRoot *common.Hash                        `json:"parentBeaconBlockRoot"`
@@ -148,8 +148,8 @@ func (s *stEnv) UnmarshalJSON(input []byte) error {
 	if dec.ExcessBlobGas != nil {
 		s.ExcessBlobGas = (*uint64)(dec.ExcessBlobGas)
 	}
-	if dec.TargetBlobCount != nil {
-		s.TargetBlobCount = (*uint64)(dec.TargetBlobCount)
+	if dec.TargetBlobsPerBlock != nil {
+		s.TargetBlobsPerBlock = (*uint64)(dec.TargetBlobsPerBlock)
 	}
 	if dec.ParentExcessBlobGas != nil {
 		s.ParentExcessBlobGas = (*uint64)(dec.ParentExcessBlobGas)

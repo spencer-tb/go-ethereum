@@ -35,7 +35,7 @@ func (g Genesis) MarshalJSON() ([]byte, error) {
 		ExcessBlobGas   *math.HexOrDecimal64                       `json:"excessBlobGas"`
 		BlobGasUsed     *math.HexOrDecimal64                       `json:"blobGasUsed"`
 		RequestsHash    *common.Hash                               `json:"requestsHash"`
-		TargetBlobCount *math.HexOrDecimal64                       `json:"targetBlobCount"`
+		TargetBlobsPerBlock *math.HexOrDecimal64                       `json:"targetBlobsPerBlock"`
 	}
 	var enc Genesis
 	enc.Config = g.Config
@@ -59,7 +59,7 @@ func (g Genesis) MarshalJSON() ([]byte, error) {
 	enc.ExcessBlobGas = (*math.HexOrDecimal64)(g.ExcessBlobGas)
 	enc.BlobGasUsed = (*math.HexOrDecimal64)(g.BlobGasUsed)
 	enc.RequestsHash = g.RequestsHash
-	enc.TargetBlobCount = (*math.HexOrDecimal64)(g.TargetBlobCount)
+	enc.TargetBlobsPerBlock = (*math.HexOrDecimal64)(g.TargetBlobsPerBlock)
 	return json.Marshal(&enc)
 }
 
@@ -82,7 +82,7 @@ func (g *Genesis) UnmarshalJSON(input []byte) error {
 		ExcessBlobGas   *math.HexOrDecimal64                       `json:"excessBlobGas"`
 		BlobGasUsed     *math.HexOrDecimal64                       `json:"blobGasUsed"`
 		RequestsHash    *common.Hash                               `json:"requestsHash"`
-		TargetBlobCount *math.HexOrDecimal64                       `json:"targetBlobCount"`
+		TargetBlobsPerBlock *math.HexOrDecimal64                       `json:"targetBlobsPerBlock"`
 	}
 	var dec Genesis
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -142,8 +142,8 @@ func (g *Genesis) UnmarshalJSON(input []byte) error {
 	if dec.RequestsHash != nil {
 		g.RequestsHash = dec.RequestsHash
 	}
-	if dec.TargetBlobCount != nil {
-		g.TargetBlobCount = (*uint64)(dec.TargetBlobCount)
+	if dec.TargetBlobsPerBlock != nil {
+		g.TargetBlobsPerBlock = (*uint64)(dec.TargetBlobsPerBlock)
 	}
 	return nil
 }
