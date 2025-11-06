@@ -359,6 +359,13 @@ var (
 		Max:            9,
 		UpdateFraction: 5007716,
 	}
+	// DefaultAmsterdamBlobConfig is the default blob configuration for the Amsterdam fork.
+	// TODO: Update to correct blob params once decided for fork.
+	DefaultAmsterdamBlobConfig = &BlobConfig{
+		Target:         6,
+		Max:            9,
+		UpdateFraction: 5007716,
+	}
 	// DefaultBPO1BlobConfig is the default blob configuration for the Osaka fork.
 	DefaultBPO1BlobConfig = &BlobConfig{
 		Target:         9,
@@ -385,9 +392,10 @@ var (
 	}
 	// DefaultBlobSchedule is the latest configured blob schedule for Ethereum mainnet.
 	DefaultBlobSchedule = &BlobScheduleConfig{
-		Cancun: DefaultCancunBlobConfig,
-		Prague: DefaultPragueBlobConfig,
-		Osaka:  DefaultOsakaBlobConfig,
+		Cancun:    DefaultCancunBlobConfig,
+		Prague:    DefaultPragueBlobConfig,
+		Osaka:     DefaultOsakaBlobConfig,
+		Amsterdam: DefaultAmsterdamBlobConfig,
 	}
 )
 
@@ -588,15 +596,16 @@ type BlobConfig struct {
 
 // BlobScheduleConfig determines target and max number of blobs allow per fork.
 type BlobScheduleConfig struct {
-	Cancun *BlobConfig `json:"cancun,omitempty"`
-	Prague *BlobConfig `json:"prague,omitempty"`
-	Osaka  *BlobConfig `json:"osaka,omitempty"`
-	Verkle *BlobConfig `json:"verkle,omitempty"`
-	BPO1   *BlobConfig `json:"bpo1,omitempty"`
-	BPO2   *BlobConfig `json:"bpo2,omitempty"`
-	BPO3   *BlobConfig `json:"bpo3,omitempty"`
-	BPO4   *BlobConfig `json:"bpo4,omitempty"`
-	BPO5   *BlobConfig `json:"bpo5,omitempty"`
+	Cancun    *BlobConfig `json:"cancun,omitempty"`
+	Prague    *BlobConfig `json:"prague,omitempty"`
+	Osaka     *BlobConfig `json:"osaka,omitempty"`
+	Amsterdam *BlobConfig `json:"amsterdam,omitempty"`
+	Verkle    *BlobConfig `json:"verkle,omitempty"`
+	BPO1      *BlobConfig `json:"bpo1,omitempty"`
+	BPO2      *BlobConfig `json:"bpo2,omitempty"`
+	BPO3      *BlobConfig `json:"bpo3,omitempty"`
+	BPO4      *BlobConfig `json:"bpo4,omitempty"`
+	BPO5      *BlobConfig `json:"bpo5,omitempty"`
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.
