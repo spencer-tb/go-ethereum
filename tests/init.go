@@ -720,7 +720,7 @@ var Forks = map[string]*params.ChainConfig{
 			BPO4:   params.DefaultBPO4BlobConfig,
 		},
 	},
-	"Amsterdam ": {
+	"Amsterdam": {
 		ChainID:                 big.NewInt(1),
 		HomesteadBlock:          big.NewInt(0),
 		EIP150Block:             big.NewInt(0),

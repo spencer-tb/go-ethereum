@@ -566,6 +566,9 @@ func (c *ChainConfig) Description() string {
 	if c.OsakaTime != nil {
 		banner += fmt.Sprintf(" - Osaka:                       @%-10v (https://ethereum.github.io/execution-specs/src/ethereum/forks/osaka/__init__.py.html)\n", *c.OsakaTime)
 	}
+	if c.AmsterdamTime != nil {
+		banner += fmt.Sprintf(" - Amsterdam:                   @%-10v (https://ethereum.github.io/execution-specs/src/ethereum/forks/amsterdam/__init__.py.html)\n", *c.AmsterdamTime)
+	}
 	if c.VerkleTime != nil {
 		banner += fmt.Sprintf(" - Verkle:                      @%-10v\n", *c.VerkleTime)
 	}
@@ -823,6 +826,7 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 		{name: "bpo3", timestamp: c.BPO3Time, optional: true},
 		{name: "bpo4", timestamp: c.BPO4Time, optional: true},
 		{name: "bpo5", timestamp: c.BPO5Time, optional: true},
+		{name: "amsterdamTime", timestamp: c.AmsterdamTime, optional: true},
 	} {
 		if lastFork.name != "" {
 			switch {
@@ -877,6 +881,7 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 		{name: "bpo3", timestamp: c.BPO3Time, config: bsc.BPO3},
 		{name: "bpo4", timestamp: c.BPO4Time, config: bsc.BPO4},
 		{name: "bpo5", timestamp: c.BPO5Time, config: bsc.BPO5},
+		{name: "amsterdam", timestamp: c.AmsterdamTime, config: bsc.Amsterdam},
 	} {
 		if cur.config != nil {
 			if err := cur.config.validate(); err != nil {
@@ -992,6 +997,9 @@ func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, headNumber *big.Int, 
 	if isForkTimestampIncompatible(c.BPO5Time, newcfg.BPO5Time, headTimestamp) {
 		return newTimestampCompatError("BPO5 fork timestamp", c.BPO5Time, newcfg.BPO5Time)
 	}
+	if isForkTimestampIncompatible(c.AmsterdamTime, newcfg.AmsterdamTime, headTimestamp) {
+		return newTimestampCompatError("Amsterdam fork timestamp", c.AmsterdamTime, newcfg.AmsterdamTime)
+	}
 	return nil
 }
 
@@ -1011,6 +1019,8 @@ func (c *ChainConfig) LatestFork(time uint64) forks.Fork {
 	london := c.LondonBlock
 
 	switch {
+	case c.IsAmsterdam(london, time):
+		return forks.Amsterdam
 	case c.IsBPO5(london, time):
 		return forks.BPO5
 	case c.IsBPO4(london, time):
@@ -1037,6 +1047,8 @@ func (c *ChainConfig) LatestFork(time uint64) forks.Fork {
 // BlobConfig returns the blob config associated with the provided fork.
 func (c *ChainConfig) BlobConfig(fork forks.Fork) *BlobConfig {
 	switch fork {
+	case forks.Amsterdam:
+		return c.BlobScheduleConfig.Amsterdam
 	case forks.BPO5:
 		return c.BlobScheduleConfig.BPO5
 	case forks.BPO4:
@@ -1082,6 +1094,8 @@ func (c *ChainConfig) ActiveSystemContracts(time uint64) map[string]common.Addre
 // the fork isn't defined or isn't a time-based fork.
 func (c *ChainConfig) Timestamp(fork forks.Fork) *uint64 {
 	switch {
+	case fork == forks.Amsterdam:
+		return c.AmsterdamTime
 	case fork == forks.BPO5:
 		return c.BPO5Time
 	case fork == forks.BPO4:
