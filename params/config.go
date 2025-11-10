@@ -69,7 +69,6 @@ var (
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
-			Osaka:  DefaultOsakaBlobConfig,
 			BPO1:   DefaultBPO1BlobConfig,
 			BPO2:   DefaultBPO2BlobConfig,
 		},
@@ -105,7 +104,6 @@ var (
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
-			Osaka:  DefaultOsakaBlobConfig,
 			BPO1:   DefaultBPO1BlobConfig,
 			BPO2:   DefaultBPO2BlobConfig,
 		},
@@ -141,7 +139,6 @@ var (
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
-			Osaka:  DefaultOsakaBlobConfig,
 			BPO1:   DefaultBPO1BlobConfig,
 			BPO2:   DefaultBPO2BlobConfig,
 		},
@@ -177,7 +174,6 @@ var (
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
-			Osaka:  DefaultOsakaBlobConfig,
 			BPO1:   DefaultBPO1BlobConfig,
 			BPO2:   DefaultBPO2BlobConfig,
 		},
@@ -670,7 +666,7 @@ func (c *ChainConfig) Description() string {
 		banner += fmt.Sprintf(" - Prague:                      @%-10v blob: (%s)\n", *c.PragueTime, c.BlobScheduleConfig.Prague)
 	}
 	if c.OsakaTime != nil {
-		banner += fmt.Sprintf(" - Osaka:                       @%-10v blob: (%s)\n", *c.OsakaTime, c.BlobScheduleConfig.Osaka)
+		banner += fmt.Sprintf(" - Osaka:                       @%-10v\n", *c.OsakaTime)
 	}
 	if c.BPO1Time != nil {
 		banner += fmt.Sprintf(" - BPO1:                        @%-10v blob: (%s)\n", *c.BPO1Time, c.BlobScheduleConfig.BPO1)
@@ -688,7 +684,7 @@ func (c *ChainConfig) Description() string {
 		banner += fmt.Sprintf(" - BPO5:                        @%-10v blob: (%s)\n", *c.BPO5Time, c.BlobScheduleConfig.BPO5)
 	}
 	if c.AmsterdamTime != nil {
-		banner += fmt.Sprintf(" - Amsterdam:									 @%-10v blob: (%s)\n", *c.AmsterdamTime, c.BlobScheduleConfig.Amsterdam)
+		banner += fmt.Sprintf(" - Amsterdam:                   @%-10v\n", *c.AmsterdamTime)
 	}
 	if c.VerkleTime != nil {
 		banner += fmt.Sprintf(" - Verkle:                      @%-10v blob: (%s)\n", *c.VerkleTime, c.BlobScheduleConfig.Verkle)
@@ -714,16 +710,14 @@ func (bc *BlobConfig) String() string {
 
 // BlobScheduleConfig determines target and max number of blobs allow per fork.
 type BlobScheduleConfig struct {
-	Cancun    *BlobConfig `json:"cancun,omitempty"`
-	Prague    *BlobConfig `json:"prague,omitempty"`
-	Osaka     *BlobConfig `json:"osaka,omitempty"`
-	Verkle    *BlobConfig `json:"verkle,omitempty"`
-	BPO1      *BlobConfig `json:"bpo1,omitempty"`
-	BPO2      *BlobConfig `json:"bpo2,omitempty"`
-	BPO3      *BlobConfig `json:"bpo3,omitempty"`
-	BPO4      *BlobConfig `json:"bpo4,omitempty"`
-	BPO5      *BlobConfig `json:"bpo5,omitempty"`
-	Amsterdam *BlobConfig `json:"amsterdam,omitempty"`
+	Cancun *BlobConfig `json:"cancun,omitempty"`
+	Prague *BlobConfig `json:"prague,omitempty"`
+	Verkle *BlobConfig `json:"verkle,omitempty"`
+	BPO1   *BlobConfig `json:"bpo1,omitempty"`
+	BPO2   *BlobConfig `json:"bpo2,omitempty"`
+	BPO3   *BlobConfig `json:"bpo3,omitempty"`
+	BPO4   *BlobConfig `json:"bpo4,omitempty"`
+	BPO5   *BlobConfig `json:"bpo5,omitempty"`
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.
@@ -1000,13 +994,11 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 	}{
 		{name: "cancun", timestamp: c.CancunTime, config: bsc.Cancun},
 		{name: "prague", timestamp: c.PragueTime, config: bsc.Prague},
-		{name: "osaka", timestamp: c.OsakaTime, config: bsc.Osaka},
 		{name: "bpo1", timestamp: c.BPO1Time, config: bsc.BPO1},
 		{name: "bpo2", timestamp: c.BPO2Time, config: bsc.BPO2},
 		{name: "bpo3", timestamp: c.BPO3Time, config: bsc.BPO3},
 		{name: "bpo4", timestamp: c.BPO4Time, config: bsc.BPO4},
 		{name: "bpo5", timestamp: c.BPO5Time, config: bsc.BPO5},
-		{name: "amsterdam", timestamp: c.AmsterdamTime, config: bsc.Amsterdam},
 	} {
 		if cur.config != nil {
 			if err := cur.config.validate(); err != nil {
