@@ -120,8 +120,7 @@ func TestCalcBlobFeePostOsaka(t *testing.T) {
 			BlobScheduleConfig: &params.BlobScheduleConfig{
 				Cancun: params.DefaultCancunBlobConfig,
 				Prague: params.DefaultPragueBlobConfig,
-				Osaka:  params.DefaultOsakaBlobConfig,
-				BPO1: &params.BlobConfig{
+					BPO1: &params.BlobConfig{
 					Target:         9,
 					Max:            14,
 					UpdateFraction: 8832827,

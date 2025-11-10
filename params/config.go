@@ -231,8 +231,7 @@ var (
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
-			Osaka:  DefaultOsakaBlobConfig,
-		},
+			},
 	}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
@@ -326,8 +325,7 @@ var (
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
-			Osaka:  DefaultOsakaBlobConfig,
-		},
+			},
 	}
 
 	// NonActivatedConfig defines the chain configuration without activating
@@ -409,7 +407,6 @@ var (
 	DefaultBlobSchedule = &BlobScheduleConfig{
 		Cancun: DefaultCancunBlobConfig,
 		Prague: DefaultPragueBlobConfig,
-		Osaka:  DefaultOsakaBlobConfig,
 	}
 )
 
@@ -1174,8 +1171,6 @@ func (c *ChainConfig) BlobConfig(fork forks.Fork) *BlobConfig {
 		return c.BlobScheduleConfig.BPO2
 	case forks.BPO1:
 		return c.BlobScheduleConfig.BPO1
-	case forks.Osaka:
-		return c.BlobScheduleConfig.Osaka
 	case forks.Prague:
 		return c.BlobScheduleConfig.Prague
 	case forks.Cancun:
