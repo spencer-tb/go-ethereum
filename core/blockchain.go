@@ -638,6 +638,11 @@ func (bc *BlockChain) processBlockWithAccessList(parentRoot common.Hash, block *
 		return nil, err
 	}
 
+	// EIP-7928: Validate BAL items do not exceed block gas limit
+	if err := al.ValidateGasLimit(block.Header().GasLimit); err != nil {
+		return nil, err
+	}
+
 	procTime = time.Since(startTime)
 	writeStart := time.Now()
 	// Write the block to the chain and get the status.
