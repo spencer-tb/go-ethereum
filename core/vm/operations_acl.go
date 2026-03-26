@@ -295,23 +295,31 @@ func makeCallVariantGasCall(oldCalculatorStateful, oldCalculatorStateless gasFun
 			}
 		}
 
-		// EIP-8037: Charge state gas for new account creation BEFORE the 63/64
-		// child gas allocation. State gas that spills from an empty reservoir to
-		// regular gas must reduce the gas available for callGasTemp, otherwise
-		// the Underflow check in UseGas will fail when the spillover exceeds the
-		// tiny 1/64 remainder after child gas allocation.
-		var stateGasCharged uint64
+		// EIP-8037: Account for state gas spillover in the 63/64 calculation
+		// WITHOUT charging state gas yet. State gas is included in the returned
+		// GasCosts so the interpreter charges atomically (regular first via
+		// Underflow). This prevents reservoir inflation when regular gas OOGs.
+		var stateSpillover uint64
 		if evm.chainRules.IsAmsterdam && oldStateful.StateGas > 0 {
-			stateGasCharged = oldStateful.StateGas
-			stateGasCost := GasCosts{StateGas: stateGasCharged}
+			if oldStateful.StateGas > contract.Gas.StateGas {
+				stateSpillover = oldStateful.StateGas - contract.Gas.StateGas
+			}
+			// Check total gas sufficiency (state + potential spillover)
+			stateGasCost := GasCosts{StateGas: oldStateful.StateGas}
 			if contract.Gas.Underflow(stateGasCost) {
 				return GasCosts{}, ErrOutOfGas
 			}
-			contract.GasUsed.Add(stateGasCost)
-			contract.Gas.Sub(stateGasCost)
 		}
 
-		evm.callGasTemp, err = callGas(evm.chainRules.IsEIP150, contract.Gas.RegularGas, eip150BaseGas.RegularGas, stack.Back(0))
+		// Compute 63/64 child gas with regular gas reduced by state spillover
+		effectiveRegular := contract.Gas.RegularGas
+		if stateSpillover > 0 {
+			if stateSpillover > effectiveRegular {
+				return GasCosts{}, ErrOutOfGas
+			}
+			effectiveRegular -= stateSpillover
+		}
+		evm.callGasTemp, err = callGas(evm.chainRules.IsEIP150, effectiveRegular, eip150BaseGas.RegularGas, stack.Back(0))
 		if err != nil {
 			return GasCosts{}, err
 		}
@@ -352,13 +360,6 @@ func makeCallVariantGasCall(oldCalculatorStateful, oldCalculatorStateless gasFun
 			return GasCosts{}, ErrGasUintOverflow
 		}
 
-		// If state gas was already charged directly (Amsterdam), don't include
-		// it in the returned cost — it would be double-charged by the
-		// interpreter's UseGas/Sub which increments TotalStateGasCharged again.
-		returnedStateGas := oldStateful.StateGas
-		if stateGasCharged > 0 {
-			returnedStateGas = 0
-		}
-		return GasCosts{RegularGas: totalCost, StateGas: returnedStateGas}, nil
+		return GasCosts{RegularGas: totalCost, StateGas: oldStateful.StateGas}, nil
 	}
 }

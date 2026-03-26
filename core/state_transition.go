@@ -480,20 +480,22 @@ func (st *stateTransition) execute() (*ExecutionResult, error) {
 	}
 
 	if rules.IsAmsterdam {
-		// EIP-8037: check intrinsic gas first, then floor gas.
-		// Different errors for each: INTRINSIC_GAS_TOO_LOW vs
-		// INTRINSIC_GAS_BELOW_FLOOR_GAS_COST.
+		// EIP-8037: Check order matching EELS validate_transaction.
+		// 1. Intrinsic gas must fit in tx gas limit
 		if msg.GasLimit < gas.Sum() {
 			return nil, fmt.Errorf("%w: have %d, want %d", ErrIntrinsicGas, msg.GasLimit, gas.Sum())
 		}
-		if msg.GasLimit < floorDataGas {
-			return nil, fmt.Errorf("%w: have %d, want %d", ErrFloorDataGas, msg.GasLimit, floorDataGas)
-		}
-		// EIP-8037: the regular gas consumption (intrinsic or floor) must fit within MaxTxGas.
-		// The transaction gas limit is no longer statically capped, but regular gas usage is.
+		// 2. Regular gas or calldata floor must fit within MaxTxGas cap
 		maxRegularGas := max(gas.RegularGas, floorDataGas)
 		if maxRegularGas > params.MaxTxGas {
 			return nil, fmt.Errorf("%w: max regular gas %d exceeds limit %d", ErrIntrinsicGas, maxRegularGas, params.MaxTxGas)
+		}
+		// 3. max(intrinsic, floor) must fit in tx gas limit
+		if msg.GasLimit < floorDataGas {
+			if gas.Sum() >= msg.GasLimit {
+				return nil, fmt.Errorf("%w: have %d, want %d", ErrIntrinsicGas, msg.GasLimit, floorDataGas)
+			}
+			return nil, fmt.Errorf("%w: have %d, want %d", ErrFloorDataGas, msg.GasLimit, floorDataGas)
 		}
 		// Split remaining execution gas into regular and state reservoir.
 		executionGas := msg.GasLimit - gas.Sum()

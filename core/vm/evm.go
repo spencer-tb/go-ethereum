@@ -558,8 +558,11 @@ func (evm *EVM) create(caller common.Address, code []byte, gas GasCosts, value *
 		if evm.Config.Tracer != nil && evm.Config.Tracer.OnGasChange != nil {
 			evm.Config.Tracer.OnGasChange(gas.RegularGas, 0, tracing.GasChangeCallFailedExecution)
 		}
+		// EIP-8037: Track burned regular gas so txRegular properly reflects
+		// the collision in 2D block gas accounting.
+		burnedRegular := gas.RegularGas
 		gas.RegularGas = 0
-		return nil, common.Address{}, gas, GasUsed{}, ErrContractAddressCollision
+		return nil, common.Address{}, gas, GasUsed{RegularGasUsed: burnedRegular}, ErrContractAddressCollision
 	}
 	// Create a new account on the state only if the object was not present.
 	// It might be possible the contract code is deployed to a pre-existent
@@ -630,6 +633,12 @@ func (evm *EVM) initNewContract(contract *Contract, address common.Address) ([]b
 		return ret, ErrInvalidCode
 	}
 
+	// Verify max code size BEFORE charging gas (matching EELS spec).
+	// If code is too large, no gas is charged.
+	if err := CheckMaxCodeSize(&evm.chainRules, uint64(len(ret))); err != nil {
+		return ret, err
+	}
+
 	// Charge code storage gas.
 	if !evm.chainRules.IsEIP4762 {
 		if evm.chainRules.IsAmsterdam {
@@ -657,11 +666,6 @@ func (evm *EVM) initNewContract(contract *Contract, address common.Address) ([]b
 		if len(ret) > 0 && (consumed < wanted) {
 			return ret, ErrCodeStoreOutOfGas
 		}
-	}
-
-	// Verify max code size after gas calculation.
-	if err := CheckMaxCodeSize(&evm.chainRules, uint64(len(ret))); err != nil {
-		return ret, err
 	}
 
 	if len(ret) > 0 {
