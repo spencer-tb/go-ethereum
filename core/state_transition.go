@@ -477,7 +477,9 @@ func (st *stateTransition) execute() (*ExecutionResult, error) {
 		if err != nil {
 			return nil, err
 		}
-		if msg.GasLimit < floorDataGas {
+		// For Amsterdam, the floor gas is checked against MaxTxGas below (EIP-8037).
+		// For pre-Amsterdam Prague, check against msg.GasLimit directly.
+		if !rules.IsAmsterdam && msg.GasLimit < floorDataGas {
 			return nil, fmt.Errorf("%w: have %d, want %d", ErrFloorDataGas, msg.GasLimit, floorDataGas)
 		}
 	}
