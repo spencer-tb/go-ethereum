@@ -633,16 +633,16 @@ func (evm *EVM) initNewContract(contract *Contract, address common.Address) ([]b
 	// Charge code storage gas.
 	if !evm.chainRules.IsEIP4762 {
 		if evm.chainRules.IsAmsterdam {
-			// EIP-8037: spec charges state gas first (charge_state_gas), then
-			// regular gas (charge_gas). If state gas succeeds but regular gas
-			// fails, state_gas_used is still recorded.
-			stateGas := GasCosts{StateGas: uint64(len(ret)) * evm.Context.CostPerGasByte}
-			if !contract.UseGas(stateGas, evm.Config.Tracer, tracing.GasChangeCallCodeStorage) {
-				return ret, ErrCodeStoreOutOfGas
-			}
+			// EIP-8037: charge regular gas first, then state gas.
+			// If regular gas OOGs, state gas is NOT consumed,
+			// preventing parent reservoir inflation on frame failure.
 			words := (uint64(len(ret)) + 31) / 32
 			regularGas := GasCosts{RegularGas: words * params.Keccak256WordGas}
 			if !contract.UseGas(regularGas, evm.Config.Tracer, tracing.GasChangeCallCodeStorage) {
+				return ret, ErrCodeStoreOutOfGas
+			}
+			stateGas := GasCosts{StateGas: uint64(len(ret)) * evm.Context.CostPerGasByte}
+			if !contract.UseGas(stateGas, evm.Config.Tracer, tracing.GasChangeCallCodeStorage) {
 				return ret, ErrCodeStoreOutOfGas
 			}
 		} else {

@@ -480,10 +480,14 @@ func (st *stateTransition) execute() (*ExecutionResult, error) {
 	}
 
 	if rules.IsAmsterdam {
-		// EIP-8037: max(intrinsic, floor) must fit within the transaction gas limit.
-		effectiveGas := max(gas.Sum(), floorDataGas)
-		if msg.GasLimit < effectiveGas {
-			return nil, fmt.Errorf("%w: have %d, want %d", ErrIntrinsicGas, msg.GasLimit, effectiveGas)
+		// EIP-8037: check intrinsic gas first, then floor gas.
+		// Different errors for each: INTRINSIC_GAS_TOO_LOW vs
+		// INTRINSIC_GAS_BELOW_FLOOR_GAS_COST.
+		if msg.GasLimit < gas.Sum() {
+			return nil, fmt.Errorf("%w: have %d, want %d", ErrIntrinsicGas, msg.GasLimit, gas.Sum())
+		}
+		if msg.GasLimit < floorDataGas {
+			return nil, fmt.Errorf("%w: have %d, want %d", ErrFloorDataGas, msg.GasLimit, floorDataGas)
 		}
 		// EIP-8037: the regular gas consumption (intrinsic or floor) must fit within MaxTxGas.
 		// The transaction gas limit is no longer statically capped, but regular gas usage is.

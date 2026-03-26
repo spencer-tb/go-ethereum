@@ -693,6 +693,7 @@ func opCreate(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
 
 	scope.Contract.RefundGas(suberr, returnGas, childGasUsed, evm.Config.Tracer, tracing.GasChangeCallLeftOverRefunded)
 
+
 	if suberr == ErrExecutionReverted {
 		evm.returnData = res // set REVERT data to return data buffer
 		return res, nil
@@ -741,6 +742,14 @@ func opCreate2(pc *uint64, evm *EVM, scope *ScopeContext) ([]byte, error) {
 	scope.Stack.push(&stackvalue)
 
 	scope.Contract.RefundGas(suberr, returnGas, childGasUsed, evm.Config.Tracer, tracing.GasChangeCallLeftOverRefunded)
+
+	// EIP-8037: On address collision, undo account creation state gas
+	// (same as CREATE above).
+	if suberr == ErrContractAddressCollision && evm.chainRules.IsAmsterdam {
+		accountCreationGas := params.AccountCreationSize * evm.Context.CostPerGasByte
+		scope.Contract.GasUsed.StateGasCharged -= accountCreationGas
+		scope.Contract.Gas.Add(GasCosts{StateGas: accountCreationGas})
+	}
 
 	if suberr == ErrExecutionReverted {
 		evm.returnData = res // set REVERT data to return data buffer
