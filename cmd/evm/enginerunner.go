@@ -29,7 +29,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/tests"
 	"github.com/urfave/cli/v2"
@@ -185,6 +184,14 @@ func runEngineTest(ctx *cli.Context, fname string) ([]testResult, error) {
 
 	keys := slices.Sorted(maps.Keys(testsByName))
 
+	// A chain cache keeps the chain alive between
+	// consecutive tests that share a fork.
+	// This is very effective for parameterized
+	// tests, since each "flavor" *often*
+	// share setup phase.
+	cache := &tests.ChainCache{}
+	defer cache.Close()
+
 	var results []testResult
 	for _, name := range keys {
 		if !re.MatchString(name) {
@@ -193,7 +200,7 @@ func runEngineTest(ctx *cli.Context, fname string) ([]testResult, error) {
 		test := testsByName[name]
 		result := &testResult{Name: name, Pass: true}
 		var finalHash *common.Hash
-		if err := test.Run(rawdb.PathScheme, tracer, func(res error, chain *core.BlockChain) {
+		if err := test.Run(cache, tracer, func(res error, chain *core.BlockChain) {
 			if ctx.Bool(DumpFlag.Name) {
 				if s, _ := chain.State(); s != nil {
 					result.State = dump(s)

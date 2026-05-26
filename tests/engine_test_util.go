@@ -37,11 +37,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/params/forks"
 	"github.com/ethereum/go-ethereum/triedb"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
-	"github.com/ethereum/go-ethereum/triedb/pathdb"
 )
 
 // EngineTest checks processing of engine API payloads.
@@ -151,66 +151,131 @@ func (p *etNewPayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Run executes the engine test.
-func (t *EngineTest) Run(scheme string, tracer *tracing.Hooks, postCheck func(error, *core.BlockChain)) (result error) {
-	config, ok := Forks[t.json.Network]
-	if !ok {
-		return UnsupportedForkError{t.json.Network}
-	}
-	// Create genesis spec
-	gspec := t.genesis(config)
+// A chain cache keeps the chain alive between
+// consecutive tests that share a fork.
+// This is very effective for parameterized
+// tests, since each "flavor" *often*
+// share setup phase.
+// ******* note ******
+// Always uses rawdb.HashScheme: path-scheme's state-history
+// journal does not survive ResetWithGenesisBlock with a different state
+// root (parent layer goes missing on the next Update).
+type ChainCache struct {
+	db     ethdb.Database
+	chain  *core.BlockChain
+	config *params.ChainConfig
+}
 
-	db := rawdb.NewMemoryDatabase()
-	tconf := &triedb.Config{
-		Preimages: true,
-		IsVerkle:  gspec.Config.VerkleTime != nil && *gspec.Config.VerkleTime <= gspec.Timestamp,
+func (c *ChainCache) Close() {
+	if c.chain != nil {
+		c.chain.Stop()
 	}
-	if scheme == rawdb.PathScheme || tconf.IsVerkle {
-		tconf.PathDB = pathdb.Defaults
-	} else {
-		tconf.HashDB = hashdb.Defaults
-	}
-	if gspec.Config.TerminalTotalDifficulty == nil {
-		gspec.Config.TerminalTotalDifficulty = big.NewInt(stdmath.MaxInt64)
-	}
-	trieDb := triedb.NewDatabase(db, tconf)
+	*c = ChainCache{}
+}
+
+// commitGenesis writes gspec's state into db and verifies the resulting
+// block hash and state root match the fixture's expected values.
+func commitGenesis(t *EngineTest, db ethdb.Database, gspec *core.Genesis) (*types.Block, error) {
+	trieDb := triedb.NewDatabase(db, &triedb.Config{Preimages: true, HashDB: hashdb.Defaults})
+	defer trieDb.Close()
 	gblock, err := gspec.Commit(db, trieDb, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	trieDb.Close()
-
 	if gblock.Hash() != t.json.Genesis.Hash {
-		return fmt.Errorf("genesis block hash doesn't match test: computed=%x, test=%x", gblock.Hash().Bytes()[:6], t.json.Genesis.Hash[:6])
+		return nil, fmt.Errorf("genesis block hash doesn't match test: computed=%x, test=%x", gblock.Hash().Bytes()[:6], t.json.Genesis.Hash[:6])
 	}
 	if gblock.Root() != t.json.Genesis.StateRoot {
-		return fmt.Errorf("genesis block state root does not match test: computed=%x, test=%x", gblock.Root().Bytes()[:6], t.json.Genesis.StateRoot[:6])
+		return nil, fmt.Errorf("genesis block state root does not match test: computed=%x, test=%x", gblock.Root().Bytes()[:6], t.json.Genesis.StateRoot[:6])
 	}
-	eng := beacon.New(ethash.NewFaker())
+	return gblock, nil
+}
+
+func (c *ChainCache) buildFresh(t *EngineTest, gspec *core.Genesis, tracer *tracing.Hooks) (*core.BlockChain, error) {
+	c.Close()
+	c.config = gspec.Config
+	c.db = rawdb.NewMemoryDatabase()
+	if _, err := commitGenesis(t, c.db, gspec); err != nil {
+		return nil, err
+	}
 	options := &core.BlockChainConfig{
 		TrieCleanLimit: 0,
-		StateScheme:    scheme,
+		StateScheme:    rawdb.HashScheme,
 		Preimages:      true,
 		TxLookupLimit:  -1,
 		VmConfig:       vm.Config{Tracer: tracer},
 		NoPrefetch:     true,
 	}
-	chain, err := core.NewBlockChain(db, gspec, eng, options)
+	chain, err := core.NewBlockChain(c.db, gspec, beacon.New(ethash.NewFaker()), options)
+	if err != nil {
+		return nil, err
+	}
+	c.chain = chain
+	return chain, nil
+}
+
+func (c *ChainCache) reuseWith(t *EngineTest, gspec *core.Genesis) (*core.BlockChain, error) {
+	gblock, err := commitGenesis(t, c.db, gspec)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.chain.ResetWithGenesisBlock(gblock); err != nil {
+		return nil, err
+	}
+	return c.chain, nil
+}
+
+// Prepare returns a *core.BlockChain for running t, reusing or rebuilding as
+// needed.
+func (c *ChainCache) Prepare(t *EngineTest, tracer *tracing.Hooks) (*core.BlockChain, error) {
+	config, ok := Forks[t.json.Network]
+	if !ok {
+		return nil, UnsupportedForkError{t.json.Network}
+	}
+	gspec := t.genesis(config)
+	if gspec.Config.TerminalTotalDifficulty == nil {
+		gspec.Config.TerminalTotalDifficulty = big.NewInt(stdmath.MaxInt64)
+	}
+	if c.chain != nil && c.config == config {
+		// Same-genesis fast path: genesis state is already in the db at
+		// the right root. Skip gspec.Commit; only Reset if the chain head
+		// actually advanced past block 0.
+		if t.json.Genesis.Hash == c.chain.Genesis().Hash() {
+			if c.chain.CurrentBlock().Number.Sign() > 0 {
+				if err := c.chain.Reset(); err != nil {
+					return nil, err
+				}
+			}
+			return c.chain, nil
+		}
+		return c.reuseWith(t, gspec)
+	}
+	return c.buildFresh(t, gspec, tracer)
+}
+
+// Run executes the engine test using cache for chain reuse. cache may be nil,
+// in which case a one-shot chain is built and torn down.
+func (t *EngineTest) Run(cache *ChainCache, tracer *tracing.Hooks, postCheck func(error, *core.BlockChain)) (result error) {
+	if cache == nil {
+		cache = &ChainCache{}
+		defer cache.Close()
+	}
+	chain, err := cache.Prepare(t, tracer)
 	if err != nil {
 		return err
 	}
-	defer chain.Stop()
+	return t.applyPayloads(chain, postCheck)
+}
 
+func (t *EngineTest) applyPayloads(chain *core.BlockChain, postCheck func(error, *core.BlockChain)) (result error) {
 	if postCheck != nil {
 		defer postCheck(result, chain)
 	}
-
-	// Create engine handler and execute payloads
 	// Uses the same core functions as ConsensusAPI (ExecutableDataToBlock,
-	// InsertBlockWithoutSetHead, SetCanonical) — different from blocktest's InsertChain.
+	// InsertBlockWithoutSetHead, SetCanonical) — different from blocktest's
+	// InsertChain.
 	handler := newEngineHandler(chain)
 
-	// Send initial forkchoiceUpdated to genesis (matching consume engine behavior)
 	genesisHash := chain.Genesis().Hash()
 	initialFcResp := handler.forkchoiceUpdated(engine.ForkchoiceStateV1{
 		HeadBlockHash:      genesisHash,
