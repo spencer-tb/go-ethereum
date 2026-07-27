@@ -186,11 +186,11 @@ func intrinsicBaseGasEIP2780(from common.Address, to *common.Address, value *uin
 	// tx.value charge.
 	switch {
 	case !hasValue || isSelfTransfer:
-		// No transfer log and no recipient balance write.
+		// No recipient balance write.
 	case isContractCreation:
-		gas += params.TransferLogCost2780
+		// The recipient balance write is covered by CREATE_ACCESS.
 	default:
-		gas += params.TransferLogCost2780 + params.TxValueCost2780
+		gas += params.TxValueCost2780
 	}
 	return gas
 }
