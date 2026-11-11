@@ -1038,6 +1038,172 @@ func TestEstimateGas(t *testing.T) {
 	}
 }
 
+// TestGasCapAtLeastBlockGasLimit checks that eth_call, eth_estimateGas and
+// eth_simulateV1 never cap a call below the block gas limit, so a transaction
+// that fits in the block can be executed even when the RPC gas cap is lower,
+// and that a block override of the gas limit does not lift the cap.
+func TestGasCapAtLeastBlockGasLimit(t *testing.T) {
+	t.Parallel()
+	const (
+		threshold = 12_000_000 // gas the contract needs at entry, above the test backend's 10M RPC gas cap
+		blockGas  = 30_000_000 // block gas limit, above the cap
+	)
+	var (
+		accounts  = newAccounts(1)
+		needsGas  = common.HexToAddress("0x000000000000000000000000000000000000c0de")
+		gasAtCall = common.HexToAddress("0x000000000000000000000000000000000000c0df")
+		config    = *params.MergedTestChainConfig
+		genesis   = &core.Genesis{
+			Config:     &config,
+			Difficulty: common.Big0,
+			GasLimit:   blockGas,
+			Alloc: types.GenesisAlloc{
+				accounts[0].addr: {Balance: new(big.Int).Mul(big.NewInt(10), big.NewInt(params.Ether))},
+				// Returns the gas left at entry if it is at least threshold, reverts otherwise:
+				//   GAS PUSH4 threshold DUP2 LT PUSH1 0x11 JUMPI
+				//   PUSH0 MSTORE PUSH1 0x20 PUSH0 RETURN
+				//   JUMPDEST PUSH0 PUSH0 REVERT
+				needsGas: {Code: common.FromHex("0x5a6300b71b0081106011575f5260205ff35b5f5ffd")},
+				// Returns the gas left at entry: GAS PUSH0 MSTORE PUSH1 0x20 PUSH0 RETURN
+				gasAtCall: {Code: common.FromHex("0x5a5f5260205ff3")},
+			},
+		}
+	)
+	config.AmsterdamTime = new(uint64)
+	api := NewBlockChainAPI(newTestBackend(t, 0, genesis, beacon.New(ethash.NewFaker()), nil))
+	if cap := api.b.RPCGasCap(); cap >= threshold {
+		t.Fatalf("test needs an RPC gas cap below %d, have %d", threshold, cap)
+	}
+	latest := rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber)
+	args := TransactionArgs{From: &accounts[0].addr, To: &needsGas}
+	explicit := hexutil.Uint64(20_000_000)
+	withGas := args
+	withGas.Gas = &explicit
+
+	// An explicit gas above the cap is allowed up to the block gas limit.
+	if _, err := api.Call(context.Background(), withGas, &latest, nil, nil); err != nil {
+		t.Errorf("eth_call: %v", err)
+	}
+	// Without an explicit gas, the default stays the cap.
+	out, err := api.Call(context.Background(), TransactionArgs{From: &accounts[0].addr, To: &gasAtCall}, &latest, nil, nil)
+	if err != nil {
+		t.Fatalf("eth_call without gas: %v", err)
+	}
+	if left := new(big.Int).SetBytes(out); left.Uint64() > api.b.RPCGasCap() {
+		t.Errorf("eth_call without gas: gas left at entry %d, want at most the cap %d", left, api.b.RPCGasCap())
+	}
+	// The estimate's search reaches the block gas limit.
+	gas, err := api.EstimateGas(context.Background(), args, &latest, nil, nil)
+	if err != nil {
+		t.Errorf("eth_estimateGas: %v", err)
+	} else if uint64(gas) < threshold || uint64(gas) > blockGas {
+		t.Errorf("eth_estimateGas: have %d, want between %d and %d", gas, threshold, blockGas)
+	}
+	results, err := api.SimulateV1(context.Background(), simOpts{BlockStateCalls: []simBlock{{Calls: []TransactionArgs{withGas}}}}, &latest)
+	if err != nil {
+		t.Fatalf("eth_simulateV1: %v", err)
+	}
+	if call := results[0].Calls[0]; call.Status != hexutil.Uint64(types.ReceiptStatusSuccessful) {
+		t.Errorf("eth_simulateV1: call failed: %+v", call.Error)
+	}
+
+	// A larger block gas limit set through block overrides must not lift the cap.
+	huge := hexutil.Uint64(1_000_000_000)
+	args = TransactionArgs{From: &accounts[0].addr, To: &gasAtCall, Gas: &huge}
+	out, err = api.Call(context.Background(), args, &latest, nil, &override.BlockOverrides{GasLimit: &huge})
+	if err != nil {
+		t.Fatalf("eth_call with block overrides: %v", err)
+	}
+	if left := new(big.Int).SetBytes(out); left.Uint64() > blockGas {
+		t.Errorf("eth_call with block overrides: gas left at entry %d, want at most the block gas limit %d", left, blockGas)
+	}
+}
+
+// TestEstimateGasRequestBelowTxGasAmsterdam checks that after Amsterdam a
+// request gas below 21000 bounds the estimate once a transaction could fit
+// under it, since EIP-2780 lets a transfer cost less than 21000.
+func TestEstimateGasRequestBelowTxGasAmsterdam(t *testing.T) {
+	t.Parallel()
+	var (
+		accounts = newAccounts(2)
+		config   = *params.MergedTestChainConfig
+		genesis  = &core.Genesis{
+			Config:     &config,
+			Difficulty: common.Big0,
+			GasLimit:   30_000_000,
+			Alloc: types.GenesisAlloc{
+				accounts[0].addr: {Balance: big.NewInt(params.Ether)},
+				accounts[1].addr: {Balance: big.NewInt(params.Ether)},
+			},
+		}
+	)
+	config.AmsterdamTime = new(uint64)
+	api := NewBlockChainAPI(newTestBackend(t, 0, genesis, beacon.New(ethash.NewFaker()), nil))
+	latest := rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber)
+	estimate := func(gas uint64) (hexutil.Uint64, error) {
+		// A transfer without value costs TxBaseCost2780 plus the cold recipient access.
+		args := TransactionArgs{From: &accounts[0].addr, To: &accounts[1].addr}
+		if gas != 0 {
+			args.Gas = (*hexutil.Uint64)(&gas)
+		}
+		return api.EstimateGas(context.Background(), args, &latest, nil, nil)
+	}
+	need, err := estimate(0)
+	if err != nil {
+		t.Fatalf("eth_estimateGas without gas: %v", err)
+	}
+	if uint64(need) <= params.TxBaseCost2780 || uint64(need) >= params.TxGas {
+		t.Fatalf("transfer costs %d, want between %d and %d", need, params.TxBaseCost2780, params.TxGas)
+	}
+	// A request gas just below what the transfer needs bounds the estimate.
+	if _, err := estimate(uint64(need) - 1); err == nil {
+		t.Errorf("eth_estimateGas with gas %d: want an error, the transfer needs %d", need-1, need)
+	}
+	// A request gas that is enough gets the same estimate.
+	if have, err := estimate(uint64(need)); err != nil || have != need {
+		t.Errorf("eth_estimateGas with gas %d: have %d, %v, want %d", need, have, err, need)
+	}
+	// A request gas below any transaction's cost is ignored.
+	if have, err := estimate(params.TxBaseCost2780 - 1); err != nil || have != need {
+		t.Errorf("eth_estimateGas with gas %d: have %d, %v, want %d", params.TxBaseCost2780-1, have, err, need)
+	}
+}
+
+// TestEstimateGasAboveTotalGasCap checks that after Amsterdam a request gas
+// above the EIP-8037 total gas limit is lowered to it for the estimate's
+// search, the way Osaka lowers it to MaxTxGas.
+func TestEstimateGasAboveTotalGasCap(t *testing.T) {
+	t.Parallel()
+	var (
+		accounts = newAccounts(1)
+		loop     = common.HexToAddress("0x000000000000000000000000000000000000c0de")
+		config   = *params.MergedTestChainConfig
+		genesis  = &core.Genesis{
+			Config:     &config,
+			Difficulty: common.Big0,
+			GasLimit:   30_000_000,
+			Alloc: types.GenesisAlloc{
+				accounts[0].addr: {Balance: big.NewInt(params.Ether)},
+				// Runs out of gas at any gas limit: JUMPDEST PUSH0 JUMP
+				loop: {Code: common.FromHex("0x5b5f56")},
+			},
+		}
+	)
+	config.AmsterdamTime = new(uint64)
+	backend := newTestBackend(t, 0, genesis, beacon.New(ethash.NewFaker()), nil)
+	latest := rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber)
+	gas := hexutil.Uint64(params.MaxTxTotalGas + 1_000_000)
+	args := TransactionArgs{From: &accounts[0].addr, To: &loop, Gas: &gas}
+
+	// Without an RPC gas cap nothing else lowers the request gas, and the
+	// error names the highest gas limit the search tried.
+	_, err := DoEstimateGas(context.Background(), backend, args, latest, nil, nil, 0)
+	want := fmt.Sprintf("gas required exceeds allowance (%d)", params.MaxTxTotalGas)
+	if err == nil || err.Error() != want {
+		t.Errorf("eth_estimateGas: have %v, want %q", err, want)
+	}
+}
+
 func TestCall(t *testing.T) {
 	t.Parallel()
 
