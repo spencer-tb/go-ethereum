@@ -1076,17 +1076,30 @@ func TestGasCapAtLeastBlockGasLimit(t *testing.T) {
 	}
 	latest := rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber)
 	args := TransactionArgs{From: &accounts[0].addr, To: &needsGas}
+	explicit := hexutil.Uint64(20_000_000)
+	withGas := args
+	withGas.Gas = &explicit
 
-	if _, err := api.Call(context.Background(), args, &latest, nil, nil); err != nil {
+	// An explicit gas above the cap is allowed up to the block gas limit.
+	if _, err := api.Call(context.Background(), withGas, &latest, nil, nil); err != nil {
 		t.Errorf("eth_call: %v", err)
 	}
+	// Without an explicit gas, the default stays the cap.
+	out, err := api.Call(context.Background(), TransactionArgs{From: &accounts[0].addr, To: &gasAtCall}, &latest, nil, nil)
+	if err != nil {
+		t.Fatalf("eth_call without gas: %v", err)
+	}
+	if left := new(big.Int).SetBytes(out); left.Uint64() > api.b.RPCGasCap() {
+		t.Errorf("eth_call without gas: gas left at entry %d, want at most the cap %d", left, api.b.RPCGasCap())
+	}
+	// The estimate's search reaches the block gas limit.
 	gas, err := api.EstimateGas(context.Background(), args, &latest, nil, nil)
 	if err != nil {
 		t.Errorf("eth_estimateGas: %v", err)
 	} else if uint64(gas) < threshold || uint64(gas) > blockGas {
 		t.Errorf("eth_estimateGas: have %d, want between %d and %d", gas, threshold, blockGas)
 	}
-	results, err := api.SimulateV1(context.Background(), simOpts{BlockStateCalls: []simBlock{{Calls: []TransactionArgs{args}}}}, &latest)
+	results, err := api.SimulateV1(context.Background(), simOpts{BlockStateCalls: []simBlock{{Calls: []TransactionArgs{withGas}}}}, &latest)
 	if err != nil {
 		t.Fatalf("eth_simulateV1: %v", err)
 	}
@@ -1097,7 +1110,7 @@ func TestGasCapAtLeastBlockGasLimit(t *testing.T) {
 	// A larger block gas limit set through block overrides must not lift the cap.
 	huge := hexutil.Uint64(1_000_000_000)
 	args = TransactionArgs{From: &accounts[0].addr, To: &gasAtCall, Gas: &huge}
-	out, err := api.Call(context.Background(), args, &latest, nil, &override.BlockOverrides{GasLimit: &huge})
+	out, err = api.Call(context.Background(), args, &latest, nil, &override.BlockOverrides{GasLimit: &huge})
 	if err != nil {
 		t.Fatalf("eth_call with block overrides: %v", err)
 	}

@@ -263,6 +263,11 @@ func (b *gasBudget) cap(gas uint64) uint64 {
 	return gas
 }
 
+// spend deducts the given amount from the budget, stopping at zero.
+func (b *gasBudget) spend(amount uint64) {
+	b.remaining -= min(amount, b.remaining)
+}
+
 // consume deducts the given amount from the budget.
 // Returns an error if the amount exceeds the remaining budget.
 func (b *gasBudget) consume(amount uint64) error {
@@ -281,6 +286,7 @@ type simulator struct {
 	base           *types.Header
 	chainConfig    *params.ChainConfig
 	budget         *gasBudget
+	defaultBudget  *gasBudget // RPC gas cap without the block gas limit floor, bounds calls that omit gas
 	traceTransfers bool
 	validate       bool
 	fullTx         bool
@@ -414,6 +420,7 @@ func (sim *simulator) processBlock(ctx context.Context, block *simBlock, header,
 		if err := ctx.Err(); err != nil {
 			return nil, nil, nil, err
 		}
+		explicitGas := call.Gas != nil
 		gasCapped, err := sim.sanitizeCall(&call, sim.state, header, gp)
 		if err != nil {
 			return nil, nil, nil, err
@@ -457,6 +464,17 @@ func (sim *simulator) processBlock(ctx context.Context, block *simBlock, header,
 		// internally protection.
 		if err := sim.budget.consume(result.UsedGas); err != nil {
 			return nil, nil, nil, err
+		}
+		// Calls that omit gas stay within the cap as before. Calls with an
+		// explicit gas may go past it, up to the block gas limit floor.
+		if sim.defaultBudget != nil {
+			if !explicitGas {
+				if err := sim.defaultBudget.consume(result.UsedGas); err != nil {
+					return nil, nil, nil, err
+				}
+			} else {
+				sim.defaultBudget.spend(result.UsedGas)
+			}
 		}
 
 		logs := tracer.Logs()
@@ -542,7 +560,11 @@ func (sim *simulator) sanitizeCall(call *TransactionArgs, state vm.StateDB, head
 		remaining = min(remaining, header.GasLimit-gp.CumulativeExecution())
 	}
 	if call.Gas == nil {
-		call.Gas = (*hexutil.Uint64)(&remaining)
+		def := remaining
+		if sim.defaultBudget != nil {
+			def = sim.defaultBudget.cap(def)
+		}
+		call.Gas = (*hexutil.Uint64)(&def)
 	}
 	if remaining < uint64(*call.Gas) {
 		return false, &blockGasLimitReachedError{fmt.Sprintf("block gas limit reached: remaining: %d, required: %d", remaining, *call.Gas)}

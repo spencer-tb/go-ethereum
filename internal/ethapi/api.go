@@ -860,7 +860,12 @@ func DoCall(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash 
 	if state == nil || err != nil {
 		return nil, err
 	}
-	return doCall(ctx, b, args, state, header, overrides, blockOverrides, timeout, effectiveGasCap(globalGasCap, header))
+	// A call that asks for more gas than the cap may still get up to the block
+	// gas limit. Without an explicit gas, the default stays the cap.
+	if args.Gas != nil && globalGasCap != 0 && uint64(*args.Gas) > globalGasCap {
+		globalGasCap = min(uint64(*args.Gas), effectiveGasCap(globalGasCap, header))
+	}
+	return doCall(ctx, b, args, state, header, overrides, blockOverrides, timeout, globalGasCap)
 }
 
 // Call executes the given transaction on the state for the given block number.
@@ -924,6 +929,7 @@ func (api *BlockChainAPI) SimulateV1(ctx context.Context, opts simOpts, blockNrO
 		base:           base,
 		chainConfig:    api.b.ChainConfig(),
 		budget:         newGasBudget(effectiveGasCap(api.b.RPCGasCap(), base)),
+		defaultBudget:  newGasBudget(api.b.RPCGasCap()),
 		traceTransfers: opts.TraceTransfers,
 		validate:       opts.Validation,
 		fullTx:         opts.ReturnFullTransactions,
@@ -1392,7 +1398,7 @@ func AccessList(ctx context.Context, b Backend, blockNrOrHash rpc.BlockNumberOrH
 		args.Nonce = &nonce
 	}
 	blockCtx := core.NewEVMBlockContext(header, NewChainContext(ctx, b), nil)
-	if err = args.CallDefaults(effectiveGasCap(b.RPCGasCap(), header), blockCtx.BaseFee, b.ChainConfig().ChainID); err != nil {
+	if err = args.CallDefaults(b.RPCGasCap(), blockCtx.BaseFee, b.ChainConfig().ChainID); err != nil {
 		return nil, 0, nil, err
 	}
 
