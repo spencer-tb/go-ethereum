@@ -68,6 +68,10 @@ func Estimate(ctx context.Context, call *core.Message, opts *Options, gasCap uin
 	if hi > params.MaxTxGas && isOsaka && !isAmsterdam {
 		hi = params.MaxTxGas
 	}
+	// Cap it according to EIP-8037 if the estimation targets Amsterdam
+	if hi > params.MaxTxTotalGas && isAmsterdam {
+		hi = params.MaxTxTotalGas
+	}
 
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *uint256.Int

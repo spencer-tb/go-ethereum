@@ -1119,6 +1119,41 @@ func TestGasCapAtLeastBlockGasLimit(t *testing.T) {
 	}
 }
 
+// TestEstimateGasAboveTotalGasCap checks that after Amsterdam a request gas
+// above the EIP-8037 total gas limit is lowered to it for the estimate's
+// search, the way Osaka lowers it to MaxTxGas.
+func TestEstimateGasAboveTotalGasCap(t *testing.T) {
+	t.Parallel()
+	var (
+		accounts = newAccounts(1)
+		loop     = common.HexToAddress("0x000000000000000000000000000000000000c0de")
+		config   = *params.MergedTestChainConfig
+		genesis  = &core.Genesis{
+			Config:     &config,
+			Difficulty: common.Big0,
+			GasLimit:   30_000_000,
+			Alloc: types.GenesisAlloc{
+				accounts[0].addr: {Balance: big.NewInt(params.Ether)},
+				// Runs out of gas at any gas limit: JUMPDEST PUSH0 JUMP
+				loop: {Code: common.FromHex("0x5b5f56")},
+			},
+		}
+	)
+	config.AmsterdamTime = new(uint64)
+	backend := newTestBackend(t, 0, genesis, beacon.New(ethash.NewFaker()), nil)
+	latest := rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber)
+	gas := hexutil.Uint64(params.MaxTxTotalGas + 1_000_000)
+	args := TransactionArgs{From: &accounts[0].addr, To: &loop, Gas: &gas}
+
+	// Without an RPC gas cap nothing else lowers the request gas, and the
+	// error names the highest gas limit the search tried.
+	_, err := DoEstimateGas(context.Background(), backend, args, latest, nil, nil, 0)
+	want := fmt.Sprintf("gas required exceeds allowance (%d)", params.MaxTxTotalGas)
+	if err == nil || err.Error() != want {
+		t.Errorf("eth_estimateGas: have %v, want %q", err, want)
+	}
+}
+
 func TestCall(t *testing.T) {
 	t.Parallel()
 
