@@ -717,6 +717,18 @@ type ChainContext struct {
 	ctx context.Context
 }
 
+// effectiveGasCap returns the RPC gas cap to apply at the block of header. A
+// transaction that fits in the block can be included, so it can also be
+// executed: a non-zero cap below the block gas limit is raised to it. header
+// must be the block's own header, not one with block overrides applied, so
+// that a request cannot lift the cap by overriding the gas limit.
+func effectiveGasCap(gasCap uint64, header *types.Header) uint64 {
+	if gasCap == 0 || header == nil {
+		return gasCap
+	}
+	return max(gasCap, header.GasLimit)
+}
+
 // NewChainContext creates a new ChainContext object.
 func NewChainContext(ctx context.Context, backend ChainContextBackend) *ChainContext {
 	return &ChainContext{ctx: ctx, b: backend}
@@ -848,7 +860,7 @@ func DoCall(ctx context.Context, b Backend, args TransactionArgs, blockNrOrHash 
 	if state == nil || err != nil {
 		return nil, err
 	}
-	return doCall(ctx, b, args, state, header, overrides, blockOverrides, timeout, globalGasCap)
+	return doCall(ctx, b, args, state, header, overrides, blockOverrides, timeout, effectiveGasCap(globalGasCap, header))
 }
 
 // Call executes the given transaction on the state for the given block number.
@@ -911,7 +923,7 @@ func (api *BlockChainAPI) SimulateV1(ctx context.Context, opts simOpts, blockNrO
 		state:          state,
 		base:           base,
 		chainConfig:    api.b.ChainConfig(),
-		budget:         newGasBudget(api.b.RPCGasCap()),
+		budget:         newGasBudget(effectiveGasCap(api.b.RPCGasCap(), base)),
 		traceTransfers: opts.TraceTransfers,
 		validate:       opts.Validation,
 		fullTx:         opts.ReturnFullTransactions,
@@ -929,6 +941,7 @@ func DoEstimateGas(ctx context.Context, b Backend, args TransactionArgs, blockNr
 	if state == nil || err != nil {
 		return 0, err
 	}
+	gasCap = effectiveGasCap(gasCap, header)
 	blockCtx := core.NewEVMBlockContext(header, NewChainContext(ctx, b), nil)
 	if blockOverrides != nil {
 		if err := blockOverrides.Apply(&blockCtx); err != nil {
@@ -1379,7 +1392,7 @@ func AccessList(ctx context.Context, b Backend, blockNrOrHash rpc.BlockNumberOrH
 		args.Nonce = &nonce
 	}
 	blockCtx := core.NewEVMBlockContext(header, NewChainContext(ctx, b), nil)
-	if err = args.CallDefaults(b.RPCGasCap(), blockCtx.BaseFee, b.ChainConfig().ChainID); err != nil {
+	if err = args.CallDefaults(effectiveGasCap(b.RPCGasCap(), header), blockCtx.BaseFee, b.ChainConfig().ChainID); err != nil {
 		return nil, 0, nil, err
 	}
 
