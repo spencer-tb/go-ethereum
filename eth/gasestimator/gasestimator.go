@@ -56,15 +56,22 @@ func Estimate(ctx context.Context, call *core.Message, opts *Options, gasCap uin
 		lo uint64 // lowest-known gas limit where tx execution fails
 		hi uint64 // lowest-known gas limit where tx execution succeeds
 	)
-	// Determine the highest gas limit can be used during the estimation.
+	isOsaka := opts.Config.IsOsaka(opts.Header.Number, opts.Header.Time)
+	isAmsterdam := opts.Config.IsAmsterdam(opts.Header.Number, opts.Header.Time)
+
+	// Determine the highest gas limit can be used during the estimation. The
+	// caller's gas counts once some transaction could fit under it, which since
+	// EIP-2780 starts at TxBaseCost2780 rather than TxGas.
+	minGas := params.TxGas
+	if isAmsterdam {
+		minGas = params.TxBaseCost2780
+	}
 	hi = opts.Header.GasLimit
-	if call.GasLimit >= params.TxGas {
+	if call.GasLimit >= minGas {
 		hi = call.GasLimit
 	}
 
 	// Cap the maximum gas allowance according to EIP-7825 if the estimation targets Osaka
-	isOsaka := opts.Config.IsOsaka(opts.Header.Number, opts.Header.Time)
-	isAmsterdam := opts.Config.IsAmsterdam(opts.Header.Number, opts.Header.Time)
 	if hi > params.MaxTxGas && isOsaka && !isAmsterdam {
 		hi = params.MaxTxGas
 	}
@@ -128,7 +135,7 @@ func Estimate(ctx context.Context, call *core.Message, opts *Options, gasCap uin
 	// tx field combos that bump the price up (e.g. unused access list items).
 	if len(call.Data) == 0 {
 		if call.To != nil && opts.State.GetCodeSize(*call.To) == 0 {
-			failed, result, err := execute(ctx, call, opts, params.TxGas)
+			failed, result, err := execute(ctx, call, opts, min(hi, params.TxGas))
 			if !failed && err == nil {
 				return result.UsedGas, nil, nil
 			}

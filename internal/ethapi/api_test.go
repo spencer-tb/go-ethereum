@@ -1119,6 +1119,56 @@ func TestGasCapAtLeastBlockGasLimit(t *testing.T) {
 	}
 }
 
+// TestEstimateGasRequestBelowTxGasAmsterdam checks that after Amsterdam a
+// request gas below 21000 bounds the estimate once a transaction could fit
+// under it, since EIP-2780 lets a transfer cost less than 21000.
+func TestEstimateGasRequestBelowTxGasAmsterdam(t *testing.T) {
+	t.Parallel()
+	var (
+		accounts = newAccounts(2)
+		config   = *params.MergedTestChainConfig
+		genesis  = &core.Genesis{
+			Config:     &config,
+			Difficulty: common.Big0,
+			GasLimit:   30_000_000,
+			Alloc: types.GenesisAlloc{
+				accounts[0].addr: {Balance: big.NewInt(params.Ether)},
+				accounts[1].addr: {Balance: big.NewInt(params.Ether)},
+			},
+		}
+	)
+	config.AmsterdamTime = new(uint64)
+	api := NewBlockChainAPI(newTestBackend(t, 0, genesis, beacon.New(ethash.NewFaker()), nil))
+	latest := rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber)
+	estimate := func(gas uint64) (hexutil.Uint64, error) {
+		// A transfer without value costs TxBaseCost2780 plus the cold recipient access.
+		args := TransactionArgs{From: &accounts[0].addr, To: &accounts[1].addr}
+		if gas != 0 {
+			args.Gas = (*hexutil.Uint64)(&gas)
+		}
+		return api.EstimateGas(context.Background(), args, &latest, nil, nil)
+	}
+	need, err := estimate(0)
+	if err != nil {
+		t.Fatalf("eth_estimateGas without gas: %v", err)
+	}
+	if uint64(need) <= params.TxBaseCost2780 || uint64(need) >= params.TxGas {
+		t.Fatalf("transfer costs %d, want between %d and %d", need, params.TxBaseCost2780, params.TxGas)
+	}
+	// A request gas just below what the transfer needs bounds the estimate.
+	if _, err := estimate(uint64(need) - 1); err == nil {
+		t.Errorf("eth_estimateGas with gas %d: want an error, the transfer needs %d", need-1, need)
+	}
+	// A request gas that is enough gets the same estimate.
+	if have, err := estimate(uint64(need)); err != nil || have != need {
+		t.Errorf("eth_estimateGas with gas %d: have %d, %v, want %d", need, have, err, need)
+	}
+	// A request gas below any transaction's cost is ignored.
+	if have, err := estimate(params.TxBaseCost2780 - 1); err != nil || have != need {
+		t.Errorf("eth_estimateGas with gas %d: have %d, %v, want %d", params.TxBaseCost2780-1, have, err, need)
+	}
+}
+
 // TestEstimateGasAboveTotalGasCap checks that after Amsterdam a request gas
 // above the EIP-8037 total gas limit is lowered to it for the estimate's
 // search, the way Osaka lowers it to MaxTxGas.
