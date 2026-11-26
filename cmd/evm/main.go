@@ -241,6 +241,7 @@ func init() {
 		runCommand,
 		blockTestCommand,
 		engineTestCommand,
+		buildTestCommand,
 		stateTestCommand,
 		stateTransitionCommand,
 		transactionCommand,

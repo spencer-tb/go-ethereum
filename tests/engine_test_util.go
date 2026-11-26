@@ -138,29 +138,7 @@ type EngineAPIFunc func(chain *core.BlockChain, db ethdb.Database) (*rpc.Client,
 // forkchoice updates go through it at the method versions the fixture names.
 func (t *EngineTest) Run(scheme string, tracer *tracing.Hooks, cfg RunConfig, attach EngineAPIFunc, postCheck func(error, *core.BlockChain)) (result error) {
 	t.Rejections = []Rejection{}
-	config, ok := Forks[t.json.Network]
-	if !ok {
-		return UnsupportedForkError{t.json.Network}
-	}
-	cpy := *config
-	gspec := genesisFromHeader(&cpy, &t.json.Genesis, t.json.Pre)
-	// if ttd is not specified, set an arbitrary huge value
-	if gspec.Config.TerminalTotalDifficulty == nil {
-		gspec.Config.TerminalTotalDifficulty = big.NewInt(stdmath.MaxInt64)
-	}
-	db := rawdb.NewMemoryDatabase()
-	options := &core.BlockChainConfig{
-		TrieCleanLimit: 0,
-		StateScheme:    scheme,
-		Preimages:      true,
-		TxLookupLimit:  -1, // disable tx indexing
-		VmConfig: vm.Config{
-			Tracer:                   tracer,
-			DisableParallelExecution: cfg.Sequential,
-		},
-		NoPrecompileCache: cfg.NoPrecompileCache,
-	}
-	chain, err := core.NewBlockChain(db, gspec, beacon.New(ethash.NewFaker()), options)
+	chain, db, err := t.json.newChain(scheme, tracer, cfg)
 	if err != nil {
 		return err
 	}
@@ -169,28 +147,16 @@ func (t *EngineTest) Run(scheme string, tracer *tracing.Hooks, cfg RunConfig, at
 	if postCheck != nil {
 		defer func() { postCheck(result, chain) }()
 	}
-	genesis := chain.Genesis()
-	if genesis.Hash() != t.json.Genesis.Hash {
-		return fmt.Errorf("genesis block hash doesn't match test: computed=%x, test=%x", genesis.Hash().Bytes()[:6], t.json.Genesis.Hash[:6])
-	}
-	if genesis.Root() != t.json.Genesis.StateRoot {
-		return fmt.Errorf("genesis block state root does not match test: computed=%x, test=%x", genesis.Root().Bytes()[:6], t.json.Genesis.StateRoot[:6])
+	if err := t.json.checkGenesis(chain.Genesis()); err != nil {
+		return err
 	}
 	client, release, err := attach(chain, db)
 	if err != nil {
 		return err
 	}
 	defer release()
-	if len(t.json.Payloads) == 0 {
-		return errors.New("no payloads")
-	}
-	// Send initial forkchoiceUpdated to genesis (matching consume engine behavior)
-	fcResp, err := forkchoiceUpdated(client, t.json.Payloads[0].FcuVersion, genesis.Hash())
-	if err != nil {
-		return fmt.Errorf("initial forkchoiceUpdated to genesis: %v", err)
-	}
-	if fcResp.PayloadStatus.Status != engine.VALID {
-		return fmt.Errorf("initial FCU to genesis returned %s", fcResp.PayloadStatus.Status)
+	if err := t.json.forkchoiceToGenesis(client, chain.Genesis().Hash()); err != nil {
+		return err
 	}
 
 	for i, payload := range t.json.Payloads {
@@ -264,6 +230,65 @@ func (t *EngineTest) Run(scheme string, tracer *tracing.Hooks, cfg RunConfig, at
 		if have != want {
 			return fmt.Errorf("post state root mismatch: want %x, have %x", want, have)
 		}
+	}
+	return nil
+}
+
+// newChain builds a fresh in-memory chain from the fixture's genesis, with the
+// state scheme, tracer and executor the run asks for.
+func (t *etJSON) newChain(scheme string, tracer *tracing.Hooks, cfg RunConfig) (*core.BlockChain, ethdb.Database, error) {
+	config, ok := Forks[t.Network]
+	if !ok {
+		return nil, nil, UnsupportedForkError{t.Network}
+	}
+	cpy := *config
+	gspec := genesisFromHeader(&cpy, &t.Genesis, t.Pre)
+	// if ttd is not specified, set an arbitrary huge value
+	if gspec.Config.TerminalTotalDifficulty == nil {
+		gspec.Config.TerminalTotalDifficulty = big.NewInt(stdmath.MaxInt64)
+	}
+	db := rawdb.NewMemoryDatabase()
+	options := &core.BlockChainConfig{
+		TrieCleanLimit: 0,
+		StateScheme:    scheme,
+		Preimages:      true,
+		TxLookupLimit:  -1, // disable tx indexing
+		VmConfig: vm.Config{
+			Tracer:                   tracer,
+			DisableParallelExecution: cfg.Sequential,
+		},
+		NoPrecompileCache: cfg.NoPrecompileCache,
+	}
+	chain, err := core.NewBlockChain(db, gspec, beacon.New(ethash.NewFaker()), options)
+	if err != nil {
+		return nil, nil, err
+	}
+	return chain, db, nil
+}
+
+// checkGenesis checks that the chain's genesis block is the fixture's.
+func (t *etJSON) checkGenesis(genesis *types.Block) error {
+	if genesis.Hash() != t.Genesis.Hash {
+		return fmt.Errorf("genesis block hash doesn't match test: computed=%x, test=%x", genesis.Hash().Bytes()[:6], t.Genesis.Hash[:6])
+	}
+	if genesis.Root() != t.Genesis.StateRoot {
+		return fmt.Errorf("genesis block state root does not match test: computed=%x, test=%x", genesis.Root().Bytes()[:6], t.Genesis.StateRoot[:6])
+	}
+	return nil
+}
+
+// forkchoiceToGenesis sends the initial forkchoice update to genesis, as
+// consume engine does before the fixture's first payload.
+func (t *etJSON) forkchoiceToGenesis(client *rpc.Client, genesis common.Hash) error {
+	if len(t.Payloads) == 0 {
+		return errors.New("no payloads")
+	}
+	fcResp, err := forkchoiceUpdated(client, t.Payloads[0].FcuVersion, genesis)
+	if err != nil {
+		return fmt.Errorf("initial forkchoiceUpdated to genesis: %v", err)
+	}
+	if fcResp.PayloadStatus.Status != engine.VALID {
+		return fmt.Errorf("initial FCU to genesis returned %s", fcResp.PayloadStatus.Status)
 	}
 	return nil
 }
