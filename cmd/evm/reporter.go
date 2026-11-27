@@ -106,8 +106,8 @@ func report(ctx *cli.Context, results []testResult) {
 	fmt.Println(string(out))
 }
 
-// exitIncomplete is the exit status of a blocktest or enginetest run that could
-// not run all of its input: a path that does not exist or cannot be read, or a
+// exitIncomplete is the exit status of a blocktest, enginetest or buildtest run
+// that could not run all of its input: a path that does not exist or cannot be read, or a
 // fixture file that cannot be parsed. A run that ran everything exits 0 when
 // every test passed and 1 when any failed.
 const exitIncomplete = 2

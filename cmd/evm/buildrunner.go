@@ -141,5 +141,11 @@ func attachBuildAPI(chain *core.BlockChain, db ethdb.Database) (*rpc.Client, fun
 		server.Stop()
 		base.downloader.Terminate()
 	}
-	return client, backend.miner.SetGasCeil, release, nil
+	setGasTarget := func(target uint64) {
+		if target == 0 {
+			target = miner.DefaultConfig.GasCeil
+		}
+		backend.miner.SetGasCeil(target)
+	}
+	return client, setGasTarget, release, nil
 }

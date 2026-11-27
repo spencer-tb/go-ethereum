@@ -23,7 +23,9 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	"github.com/ethereum/go-ethereum/common"
@@ -74,7 +76,8 @@ func (t *BuildTest) Network() string {
 
 // BuildAPIFunc attaches the engine API and the testing API to a test's freshly
 // built chain. It returns an in-process client for both, a function setting the
-// builder's gas limit target, and a function releasing them.
+// builder's own gas limit target, where 0 restores its default, and a function
+// releasing them.
 type BuildAPIFunc func(chain *core.BlockChain, db ethdb.Database) (client *rpc.Client, setGasTarget func(uint64), release func(), err error)
 
 // Run executes the build test on a fresh in-memory chain built from the
@@ -150,13 +153,16 @@ func (t *BuildTest) build(client *rpc.Client, setGasTarget func(uint64), index i
 		attributes.BeaconRoot = &root
 	}
 	// The builder targets the fixture's gas limit, through the attributes from
-	// forkchoiceUpdatedV4 on and through its own gas target before. A valid
-	// payload's gas limit is within one step of its parent's, so it is reached.
+	// forkchoiceUpdatedV4 on and through its own gas target before. From V4 on its
+	// own target stays at the default, so only the attributes can reach the limit.
+	// A valid payload's gas limit is within one step of its parent's.
 	if payload.FcuVersion >= 4 {
 		gasLimit := want.GasLimit
 		attributes.TargetGasLimit = &gasLimit
+		setGasTarget(0)
+	} else {
+		setGasTarget(want.GasLimit)
 	}
-	setGasTarget(want.GasLimit)
 
 	transactions := make([]hexutil.Bytes, len(want.Transactions))
 	for i, tx := range want.Transactions {
@@ -174,7 +180,7 @@ func (t *BuildTest) build(client *rpc.Client, setGasTarget func(uint64), index i
 	}
 	t.Built++
 
-	mismatches, err := fieldMismatches(index, &want, built.ExecutionPayload)
+	mismatches, err := fieldMismatches(index, payload.Params[0], built.ExecutionPayload)
 	if err != nil {
 		return fmt.Errorf("payload %d: %v", index, err)
 	}
@@ -185,24 +191,24 @@ func (t *BuildTest) build(client *rpc.Client, setGasTarget func(uint64), index i
 		if len(payload.Params) < 4 {
 			return fmt.Errorf("payload %d: no executionRequests param", index)
 		}
-		var wantRequests []hexutil.Bytes
-		if err := json.Unmarshal(payload.Params[3], &wantRequests); err != nil {
-			return fmt.Errorf("payload %d: executionRequests: %v", index, err)
-		}
-		gotRequests := make([]hexutil.Bytes, len(built.Requests))
-		for i, request := range built.Requests {
-			gotRequests[i] = request
-		}
-		expected, err := json.Marshal(wantRequests)
-		if err != nil {
-			return err
+		// Requests the builder left out encode as null, not as an empty list.
+		var gotRequests []hexutil.Bytes
+		if built.Requests != nil {
+			gotRequests = make([]hexutil.Bytes, len(built.Requests))
+			for i, request := range built.Requests {
+				gotRequests[i] = request
+			}
 		}
 		got, err := json.Marshal(gotRequests)
 		if err != nil {
 			return err
 		}
-		if !bytes.Equal(expected, got) {
-			t.Mismatches = append(t.Mismatches, Mismatch{Index: index, Field: "executionRequests", Expected: expected, Got: got})
+		mismatch, err := valueMismatch(index, "executionRequests", payload.Params[3], got)
+		if err != nil {
+			return fmt.Errorf("payload %d: executionRequests: %v", index, err)
+		}
+		if mismatch != nil {
+			t.Mismatches = append(t.Mismatches, *mismatch)
 		}
 	}
 	return nil
@@ -246,29 +252,90 @@ func (t *BuildTest) accepted(index int, status engine.PayloadStatusV1, err error
 	return true, nil
 }
 
-// fieldMismatches compares two execution payloads field by field in their JSON
-// form, so both values of a mismatch read as they do in a fixture. Fields are
-// listed in name order.
-func fieldMismatches(index int, want, got *engine.ExecutableData) ([]Mismatch, error) {
-	wantFields, err := jsonFields(want)
-	if err != nil {
+// fieldMismatches compares every field of the fixture's execution payload, as
+// the fixture has it, with the built payload's in its JSON form, so both values
+// of a mismatch read as they do in a fixture. A field only the built payload has
+// is not compared. Fields are listed in name order.
+func fieldMismatches(index int, fixture json.RawMessage, got *engine.ExecutableData) ([]Mismatch, error) {
+	var wantFields map[string]json.RawMessage
+	if err := json.Unmarshal(fixture, &wantFields); err != nil {
 		return nil, err
 	}
 	gotFields, err := jsonFields(got)
 	if err != nil {
 		return nil, err
 	}
-	names := maps.Clone(wantFields)
-	maps.Copy(names, gotFields)
-
 	var mismatches []Mismatch
-	for _, name := range slices.Sorted(maps.Keys(names)) {
-		expected, got := orNull(wantFields[name]), orNull(gotFields[name])
-		if !bytes.Equal(expected, got) {
-			mismatches = append(mismatches, Mismatch{Index: index, Field: name, Expected: expected, Got: got})
+	for _, name := range slices.Sorted(maps.Keys(wantFields)) {
+		mismatch, err := valueMismatch(index, name, wantFields[name], orNull(gotFields[name]))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %v", name, err)
+		}
+		if mismatch != nil {
+			mismatches = append(mismatches, *mismatch)
 		}
 	}
 	return mismatches, nil
+}
+
+// valueMismatch returns the mismatch of field when the fixture's value and the
+// built one differ as JSON values, and nil when they are equal.
+func valueMismatch(index int, field string, expected, got json.RawMessage) (*Mismatch, error) {
+	var buf bytes.Buffer
+	if err := json.Compact(&buf, expected); err != nil {
+		return nil, err
+	}
+	var want, have any
+	if err := json.Unmarshal(buf.Bytes(), &want); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(got, &have); err != nil {
+		return nil, err
+	}
+	if jsonValuesEqual(want, have) {
+		return nil, nil
+	}
+	return &Mismatch{Index: index, Field: field, Expected: json.RawMessage(buf.Bytes()), Got: got}, nil
+}
+
+// jsonValuesEqual compares two decoded JSON values as values: objects by their
+// fields in any order, a missing field as null, and strings, which carry the
+// payload's hex, regardless of case.
+func jsonValuesEqual(a, b any) bool {
+	switch a := a.(type) {
+	case string:
+		b, ok := b.(string)
+		return ok && strings.EqualFold(a, b)
+	case []any:
+		b, ok := b.([]any)
+		if !ok || len(a) != len(b) {
+			return false
+		}
+		for i := range a {
+			if !jsonValuesEqual(a[i], b[i]) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		b, ok := b.(map[string]any)
+		if !ok {
+			return false
+		}
+		for key, value := range a {
+			if !jsonValuesEqual(value, b[key]) {
+				return false
+			}
+		}
+		for key, value := range b {
+			if _, ok := a[key]; !ok && value != nil {
+				return false
+			}
+		}
+		return true
+	default:
+		return reflect.DeepEqual(a, b)
+	}
 }
 
 // jsonFields returns the top-level fields of v's JSON encoding.

@@ -1361,7 +1361,7 @@ func builtCount(res testResult) int {
 
 // TestBuildTestReportsMismatch checks that a field in which the built payload
 // differs from the fixture's is reported with both values, that the fixture's
-// payload is still imported, and that the run exits 1.
+// payload is still sent for import, and that the run exits 1.
 func TestBuildTestReportsMismatch(t *testing.T) {
 	t.Parallel()
 	src, err := os.ReadFile("./testdata/enginetest_bal.json")
@@ -1415,6 +1415,89 @@ func TestBuildTestReportsMismatch(t *testing.T) {
 	if status := tt.ExitStatus(); status != 1 {
 		t.Errorf("exit status %d, want 1", status)
 	}
+}
+
+// buildTestOn runs buildtest on a copy of the BAL engine fixture changed by edit,
+// and returns its one result and the exit status.
+func buildTestOn(t *testing.T, edit func(fixture map[string]any)) (testResult, int) {
+	t.Helper()
+	src, err := os.ReadFile("./testdata/enginetest_bal.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixtures map[string]map[string]any
+	if err := json.Unmarshal(src, &fixtures); err != nil {
+		t.Fatal(err)
+	}
+	for _, fixture := range fixtures {
+		edit(fixture)
+	}
+	out, err := json.Marshal(fixtures)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "buildtest.json")
+	if err := os.WriteFile(path, out, 0644); err != nil {
+		t.Fatal(err)
+	}
+	tt := cmdtest.NewTestCmd(t, nil)
+	tt.Run("evm-test", "buildtest", path)
+	stdout := tt.Output()
+	tt.WaitExit()
+	var results []testResult
+	if err := json.Unmarshal(stdout, &results); err != nil || len(results) != 1 {
+		t.Fatalf("want one JSON result, err %v:\n%s", err, stdout)
+	}
+	return results[0], tt.ExitStatus()
+}
+
+// payloadParams returns the params of the fixture's payload at index.
+func payloadParams(fixture map[string]any, index int) []any {
+	payload := fixture["engineNewPayloads"].([]any)[index].(map[string]any)
+	return payload["params"].([]any)
+}
+
+// TestBuildTestFailsOnAMismatchAlone checks that a mismatch fails a fixture whose
+// payload still imports: a field the payload decoding ignores but the comparison
+// reads.
+func TestBuildTestFailsOnAMismatchAlone(t *testing.T) {
+	t.Parallel()
+	res, status := buildTestOn(t, func(fixture map[string]any) {
+		payloadParams(fixture, 0)[0].(map[string]any)["unknownField"] = "0x01"
+	})
+	want := []tests.Mismatch{{Index: 0, Field: "unknownField", Expected: json.RawMessage(`"0x01"`), Got: json.RawMessage("null")}}
+	if res.Pass || builtCount(res) != 1 || !reflect.DeepEqual(res.Mismatches, want) || len(res.Rejections) != 0 || status != 1 {
+		t.Errorf("pass %v, built %d, mismatches %+v, rejections %+v, exit %d", res.Pass, builtCount(res), res.Mismatches, res.Rejections, status)
+	}
+}
+
+// TestBuildTestFailsOnARefusedBuildAlone checks that a refused build fails a
+// fixture whose payloads all import: the second copy of the payload builds on a
+// parent that is no longer the head, and imports again as a known block.
+func TestBuildTestFailsOnARefusedBuildAlone(t *testing.T) {
+	t.Parallel()
+	res, status := buildTestOn(t, func(fixture map[string]any) {
+		payloads := fixture["engineNewPayloads"].([]any)
+		fixture["engineNewPayloads"] = append(payloads, payloads[0])
+	})
+	if res.Pass || builtCount(res) != 1 || len(res.Mismatches) != 0 || len(res.Rejections) != 1 || res.Rejections[0].Index != 1 || status != 1 {
+		t.Errorf("pass %v, built %d, mismatches %+v, rejections %+v, exit %d", res.Pass, builtCount(res), res.Mismatches, res.Rejections, status)
+	}
+}
+
+// TestBuildTestComparesExecutionRequests checks that the built execution
+// requests are compared with the payload's.
+func TestBuildTestComparesExecutionRequests(t *testing.T) {
+	t.Parallel()
+	res, _ := buildTestOn(t, func(fixture map[string]any) {
+		payloadParams(fixture, 0)[3] = []any{"0x0001"}
+	})
+	for _, mismatch := range res.Mismatches {
+		if mismatch.Index == 0 && mismatch.Field == "executionRequests" {
+			return
+		}
+	}
+	t.Errorf("no executionRequests mismatch in %+v", res.Mismatches)
 }
 
 // TestEvmVersion checks that evm --version prints one line and exits 0.
