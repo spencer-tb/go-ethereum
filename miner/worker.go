@@ -76,6 +76,11 @@ type environment struct {
 	blobs    int
 	bal      *bal.ConstructionBlockAccessList
 
+	// sidecarOptional lets a blob transaction come without its sidecar, as
+	// the transactions of a testing payload do when they are taken from a
+	// block. The payload's blobs bundle then lacks that transaction's blobs.
+	sidecarOptional bool
+
 	// revertedTxs and revertedIdx record transactions that were executed during
 	// block building but then reverted (excluded from the block), together with
 	// the index each was tried at.
@@ -182,6 +187,7 @@ func (miner *Miner) generateWork(ctx context.Context, genParam *generateParams, 
 		// If forceOverrides is true and overrideTxs is not empty, commit the override transactions
 		// otherwise, fill the block with the current transactions from the txpool
 		if genParam.forceOverrides && len(genParam.overrideTxs) > 0 {
+			work.sidecarOptional = true
 			for _, tx := range genParam.overrideTxs {
 				work.state.SetTxContext(tx.Hash(), work.tcount, uint32(work.tcount+1))
 				if err := miner.commitTransaction(ctx, work, tx); err != nil {
@@ -417,15 +423,16 @@ func (miner *Miner) commitTransaction(ctx context.Context, env *environment, tx 
 
 func (miner *Miner) commitBlobTransaction(ctx context.Context, env *environment, tx *types.Transaction) error {
 	sc := tx.BlobTxSidecar()
-	if sc == nil {
+	if sc == nil && !env.sidecarOptional {
 		panic("blob transaction without blobs in miner")
 	}
 	// Checking against blob gas limit: It's kind of ugly to perform this check here, but there
 	// isn't really a better place right now. The blob gas limit is checked at block validation time
 	// and not during execution. This means core.ApplyTransaction will not return an error if the
 	// tx has too many blobs. So we have to explicitly check it here.
+	blobs := len(tx.BlobHashes())
 	maxBlobs := miner.maxBlobsPerBlock(env.header.Time)
-	if env.blobs+len(sc.Blobs) > maxBlobs {
+	if env.blobs+blobs > maxBlobs {
 		return errors.New("max data blobs reached")
 	}
 	receipt, bal, err := miner.applyTransaction(ctx, env, tx)
@@ -435,8 +442,10 @@ func (miner *Miner) commitBlobTransaction(ctx context.Context, env *environment,
 	txNoBlob := tx.WithoutBlobTxSidecar()
 	env.txs = append(env.txs, txNoBlob)
 	env.receipts = append(env.receipts, receipt)
-	env.sidecars = append(env.sidecars, sc)
-	env.blobs += len(sc.Blobs)
+	if sc != nil {
+		env.sidecars = append(env.sidecars, sc)
+	}
+	env.blobs += blobs
 	env.size += txNoBlob.Size()
 	*env.header.BlobGasUsed += receipt.BlobGasUsed
 	env.tcount++

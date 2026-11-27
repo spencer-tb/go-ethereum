@@ -241,6 +241,7 @@ func init() {
 		runCommand,
 		blockTestCommand,
 		engineTestCommand,
+		buildTestCommand,
 		stateTestCommand,
 		stateTransitionCommand,
 		transactionCommand,
@@ -328,7 +329,7 @@ func collectFiles(path string) []string {
 	return out
 }
 
-// collectFixtures walks the given paths for blocktest and enginetest. A
+// collectFixtures walks the given paths for blocktest, enginetest and buildtest. A
 // directory contributes all files with json extension below it, except in a
 // .meta directory, where EEST keeps files that are not fixtures; a path that
 // points to a file is used as is. A path that does not exist or cannot be read

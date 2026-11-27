@@ -24,7 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/miner"
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -32,10 +31,12 @@ import (
 // testingAPI implements the testing_ namespace.
 // It's an engine-API adjacent namespace for testing purposes.
 type testingAPI struct {
-	eth *eth.Ethereum
+	eth Backend
 }
 
-func newTestingAPI(backend *eth.Ethereum) rpc.API {
+// NewTestingAPI returns the testing_ namespace for the given backend, which
+// builds payloads with the backend's miner.
+func NewTestingAPI(backend Backend) rpc.API {
 	return rpc.API{
 		Namespace:     "testing",
 		Service:       &testingAPI{backend},

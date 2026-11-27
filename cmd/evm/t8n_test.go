@@ -960,6 +960,7 @@ func TestRunnersTakeSeveralPaths(t *testing.T) {
 	}{
 		{"blocktest", []string{"./testdata/blocktest_bal.json", "./testdata/blocktest_exception.json"}},
 		{"enginetest", []string{"./testdata/enginetest_bal.json", "./testdata/enginetest_exception.json"}},
+		{"buildtest", []string{"./testdata/enginetest_bal.json", "./testdata/buildtest_blob.json"}},
 	} {
 		count := func(args ...string) int {
 			tt := cmdtest.NewTestCmd(t, nil)
@@ -995,6 +996,7 @@ func TestRunnersRejectBadPaths(t *testing.T) {
 	}{
 		{"blocktest", "./testdata/blocktest_bal.json"},
 		{"enginetest", "./testdata/enginetest_bal.json"},
+		{"buildtest", "./testdata/enginetest_bal.json"},
 	} {
 		for _, bad := range []struct {
 			path    string
@@ -1036,6 +1038,7 @@ func TestRunnersSkipMetaDirectory(t *testing.T) {
 	}{
 		{"blocktest", "./testdata/blocktest_bal.json"},
 		{"enginetest", "./testdata/enginetest_bal.json"},
+		{"buildtest", "./testdata/enginetest_bal.json"},
 	} {
 		dir := t.TempDir()
 		src, err := os.ReadFile(tc.file)
@@ -1283,12 +1286,17 @@ func TestRunnersExitStatus(t *testing.T) {
 // exitIncomplete.
 func TestRunnersStdinSkipsBadPath(t *testing.T) {
 	t.Parallel()
-	for _, runner := range []string{"blocktest", "enginetest"} {
+	for _, tc := range []struct{ runner, file string }{
+		{"blocktest", "./testdata/blocktest_bal.json"},
+		{"enginetest", "./testdata/enginetest_bal.json"},
+		{"buildtest", "./testdata/enginetest_bal.json"},
+	} {
+		runner := tc.runner
 		missing := filepath.Join(t.TempDir(), "missing.json")
 		tt := cmdtest.NewTestCmd(t, nil)
 		tt.Run("evm-test", runner)
 		tt.InputLine(missing)
-		tt.InputLine(fmt.Sprintf("./testdata/%s_bal.json", runner))
+		tt.InputLine(tc.file)
 		tt.InputLine("")
 		stdout := tt.Output()
 		tt.WaitExit()
@@ -1303,6 +1311,193 @@ func TestRunnersStdinSkipsBadPath(t *testing.T) {
 			t.Errorf("%s: stderr does not name the missing file:\n%s", runner, stderr)
 		}
 	}
+}
+
+// TestBuildTest checks that buildtest builds every payload a fixture expects to
+// be valid, skips the ones it expects to be invalid, and reports how many it
+// built next to empty mismatch and rejection lists.
+func TestBuildTest(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		file  string
+		built int
+	}{
+		{"./testdata/enginetest_bal.json", 1},
+		// The block's blob transaction comes without its sidecar, as payloads
+		// carry it, and is built from its versioned hashes.
+		{"./testdata/buildtest_blob.json", 1},
+		// The fixture's only payload is expected to be invalid.
+		{"./testdata/enginetest_exception.json", 0},
+	} {
+		tt := cmdtest.NewTestCmd(t, nil)
+		tt.Run("evm-test", "buildtest", tc.file)
+		stdout := tt.Output()
+		tt.WaitExit()
+		var results []testResult
+		if err := json.Unmarshal(stdout, &results); err != nil || len(results) != 1 {
+			t.Fatalf("%s: want one JSON result, err %v:\n%s", tc.file, err, stdout)
+		}
+		res := results[0]
+		if !res.Pass || builtCount(res) != tc.built || len(res.Mismatches) != 0 || len(res.Rejections) != 0 {
+			t.Errorf("%s: pass %v, built %d, mismatches %+v, rejections %+v, err %s", tc.file, res.Pass, builtCount(res), res.Mismatches, res.Rejections, res.Error)
+		}
+		if !strings.Contains(string(stdout), `"mismatches": []`) {
+			t.Errorf("%s: result has no mismatches list:\n%s", tc.file, stdout)
+		}
+		if status := tt.ExitStatus(); status != 0 {
+			t.Errorf("%s: exit status %d, want 0", tc.file, status)
+		}
+	}
+}
+
+// builtCount returns a buildtest result's number of built payloads, or -1 when
+// the result has none.
+func builtCount(res testResult) int {
+	if res.Built == nil {
+		return -1
+	}
+	return *res.Built
+}
+
+// TestBuildTestReportsMismatch checks that a field in which the built payload
+// differs from the fixture's is reported with both values, that the fixture's
+// payload is still sent for import, and that the run exits 1.
+func TestBuildTestReportsMismatch(t *testing.T) {
+	t.Parallel()
+	src, err := os.ReadFile("./testdata/enginetest_bal.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixtures map[string]map[string]any
+	if err := json.Unmarshal(src, &fixtures); err != nil {
+		t.Fatal(err)
+	}
+	const wrongRoot = "0x0000000000000000000000000000000000000000000000000000000000000001"
+	var builtRoot string
+	for _, fixture := range fixtures {
+		payload := fixture["engineNewPayloads"].([]any)[0].(map[string]any)
+		execution := payload["params"].([]any)[0].(map[string]any)
+		builtRoot = execution["stateRoot"].(string)
+		execution["stateRoot"] = wrongRoot
+	}
+	out, err := json.Marshal(fixtures)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "buildtest.json")
+	if err := os.WriteFile(path, out, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	tt := cmdtest.NewTestCmd(t, nil)
+	tt.Run("evm-test", "buildtest", path)
+	stdout := tt.Output()
+	tt.WaitExit()
+	var results []testResult
+	if err := json.Unmarshal(stdout, &results); err != nil || len(results) != 1 {
+		t.Fatalf("want one JSON result, err %v:\n%s", err, stdout)
+	}
+	res := results[0]
+	want := []tests.Mismatch{{
+		Index:    0,
+		Field:    "stateRoot",
+		Expected: json.RawMessage(`"` + wrongRoot + `"`),
+		Got:      json.RawMessage(`"` + builtRoot + `"`),
+	}}
+	if res.Pass || builtCount(res) != 1 || !reflect.DeepEqual(res.Mismatches, want) {
+		t.Errorf("pass %v, built %d, mismatches %+v, want %+v", res.Pass, builtCount(res), res.Mismatches, want)
+	}
+	// The fixture's payload no longer matches its own block hash, so the
+	// client refuses to import it.
+	if len(res.Rejections) != 1 || res.Rejections[0].Index != 0 {
+		t.Errorf("rejections %+v, want one for payload 0", res.Rejections)
+	}
+	if status := tt.ExitStatus(); status != 1 {
+		t.Errorf("exit status %d, want 1", status)
+	}
+}
+
+// buildTestOn runs buildtest on a copy of the BAL engine fixture changed by edit,
+// and returns its one result and the exit status.
+func buildTestOn(t *testing.T, edit func(fixture map[string]any)) (testResult, int) {
+	t.Helper()
+	src, err := os.ReadFile("./testdata/enginetest_bal.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixtures map[string]map[string]any
+	if err := json.Unmarshal(src, &fixtures); err != nil {
+		t.Fatal(err)
+	}
+	for _, fixture := range fixtures {
+		edit(fixture)
+	}
+	out, err := json.Marshal(fixtures)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "buildtest.json")
+	if err := os.WriteFile(path, out, 0644); err != nil {
+		t.Fatal(err)
+	}
+	tt := cmdtest.NewTestCmd(t, nil)
+	tt.Run("evm-test", "buildtest", path)
+	stdout := tt.Output()
+	tt.WaitExit()
+	var results []testResult
+	if err := json.Unmarshal(stdout, &results); err != nil || len(results) != 1 {
+		t.Fatalf("want one JSON result, err %v:\n%s", err, stdout)
+	}
+	return results[0], tt.ExitStatus()
+}
+
+// payloadParams returns the params of the fixture's payload at index.
+func payloadParams(fixture map[string]any, index int) []any {
+	payload := fixture["engineNewPayloads"].([]any)[index].(map[string]any)
+	return payload["params"].([]any)
+}
+
+// TestBuildTestFailsOnAMismatchAlone checks that a mismatch fails a fixture whose
+// payload still imports: a field the payload decoding ignores but the comparison
+// reads.
+func TestBuildTestFailsOnAMismatchAlone(t *testing.T) {
+	t.Parallel()
+	res, status := buildTestOn(t, func(fixture map[string]any) {
+		payloadParams(fixture, 0)[0].(map[string]any)["unknownField"] = "0x01"
+	})
+	want := []tests.Mismatch{{Index: 0, Field: "unknownField", Expected: json.RawMessage(`"0x01"`), Got: json.RawMessage("null")}}
+	if res.Pass || builtCount(res) != 1 || !reflect.DeepEqual(res.Mismatches, want) || len(res.Rejections) != 0 || status != 1 {
+		t.Errorf("pass %v, built %d, mismatches %+v, rejections %+v, exit %d", res.Pass, builtCount(res), res.Mismatches, res.Rejections, status)
+	}
+}
+
+// TestBuildTestFailsOnARefusedBuildAlone checks that a refused build fails a
+// fixture whose payloads all import: the second copy of the payload builds on a
+// parent that is no longer the head, and imports again as a known block.
+func TestBuildTestFailsOnARefusedBuildAlone(t *testing.T) {
+	t.Parallel()
+	res, status := buildTestOn(t, func(fixture map[string]any) {
+		payloads := fixture["engineNewPayloads"].([]any)
+		fixture["engineNewPayloads"] = append(payloads, payloads[0])
+	})
+	if res.Pass || builtCount(res) != 1 || len(res.Mismatches) != 0 || len(res.Rejections) != 1 || res.Rejections[0].Index != 1 || status != 1 {
+		t.Errorf("pass %v, built %d, mismatches %+v, rejections %+v, exit %d", res.Pass, builtCount(res), res.Mismatches, res.Rejections, status)
+	}
+}
+
+// TestBuildTestComparesExecutionRequests checks that the built execution
+// requests are compared with the payload's.
+func TestBuildTestComparesExecutionRequests(t *testing.T) {
+	t.Parallel()
+	res, _ := buildTestOn(t, func(fixture map[string]any) {
+		payloadParams(fixture, 0)[3] = []any{"0x0001"}
+	})
+	for _, mismatch := range res.Mismatches {
+		if mismatch.Index == 0 && mismatch.Field == "executionRequests" {
+			return
+		}
+	}
+	t.Errorf("no executionRequests mismatch in %+v", res.Mismatches)
 }
 
 // TestEvmVersion checks that evm --version prints one line and exits 0.

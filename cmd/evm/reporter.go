@@ -50,10 +50,16 @@ type testResult struct {
 	State *state.Dump  `json:"state,omitempty"`
 	Stats *execStats   `json:"benchStats,omitempty"`
 
-	// Rejections is set by blocktest and enginetest, empty when nothing was
-	// rejected. The runner reports each error as is; checking it against
-	// the fixture's expected exception is left to the consumer.
+	// Rejections is set by blocktest, enginetest and buildtest, empty when
+	// nothing was rejected. The runner reports each error as is; checking it
+	// against the fixture's expected exception is left to the consumer.
 	Rejections []tests.Rejection `json:"rejections,omitzero"`
+
+	// Built and Mismatches are set by buildtest: how many payloads the
+	// builder produced, and every field of a built payload that differs from
+	// the fixture's, empty when none does.
+	Built      *int             `json:"built,omitempty"`
+	Mismatches []tests.Mismatch `json:"mismatches,omitzero"`
 }
 
 func (r testResult) String() string {
@@ -100,8 +106,8 @@ func report(ctx *cli.Context, results []testResult) {
 	fmt.Println(string(out))
 }
 
-// exitIncomplete is the exit status of a blocktest or enginetest run that could
-// not run all of its input: a path that does not exist or cannot be read, or a
+// exitIncomplete is the exit status of a blocktest, enginetest or buildtest run
+// that could not run all of its input: a path that does not exist or cannot be read, or a
 // fixture file that cannot be parsed. A run that ran everything exits 0 when
 // every test passed and 1 when any failed.
 const exitIncomplete = 2
